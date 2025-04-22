@@ -13,6 +13,23 @@ function createFloatLayer() {
     // 增加穿透属性，避免被网站遮挡
     floatLayer.style.pointerEvents = 'none';
     
+    // 创建关闭按钮
+    const closeButton = document.createElement('div');
+    closeButton.textContent = '×';
+    closeButton.style.cssText = `
+     position: absolute;
+    top: 5px;
+    left: 5px;  // 修改这里，从 right 改为 left
+    cursor: pointer;
+    font-size: 20px;
+    color: #666;
+    z-index: 100000;
+    pointer-events: auto;
+    `;
+    closeButton.addEventListener('click', () => {
+        floatLayer.style.display = 'none';
+    });
+    
     // 创建关键词输入框
     const keywordInput = document.createElement('input');
     keywordInput.type = 'text';
@@ -24,6 +41,7 @@ function createFloatLayer() {
     titleList.className = 'title-list';
     titleList.style.pointerEvents = 'auto';
     
+    floatLayer.appendChild(closeButton);
     floatLayer.appendChild(keywordInput);
     floatLayer.appendChild(titleList);
     
@@ -119,6 +137,7 @@ chrome.storage.onChanged.addListener((changes) => {
 function ensureFloatLayerPersistence() {
     const observer = new MutationObserver((mutations) => {
         const existingLayer = document.querySelector('.prompt-helper-float');
+        
         if (!existingLayer) {
             init(); // 重新初始化
         }
