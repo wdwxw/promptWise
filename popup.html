@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Prompt管理助手</title>
+    <link rel="stylesheet" href="styles/popup.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 导航区 -->
+        <div class="nav">
+            <button id="addNewBtn" class="btn primary">新增记录</button>
+            <div class="nav-right">
+                <button id="exportBtn" class="btn">导出</button>
+                <button id="importBtn" class="btn">导入</button>
+            </div>
+        </div>
+
+        <!-- 记录列表 -->
+        <div id="recordList" class="record-list">
+            <!-- 记录项模板 -->
+            <template id="recordTemplate">
+                <div class="record-item">
+                    <div class="record-title"></div>
+                    <div class="record-prompt"></div>
+                    <div class="record-actions">
+                        <button class="btn edit">编辑</button>
+                        <button class="btn delete">删除</button>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        <!-- 编辑表单 -->
+        <div id="editForm" class="edit-form" style="display: none;">
+            <h2 id="formTitle">新增记录</h2>
+            <div class="form-group">
+                <label for="titleInput">标题：</label>
+                <input type="text" id="titleInput" required>
+            </div>
+            <div class="form-group">
+                <label for="promptInput">Prompt内容：</label>
+                <textarea id="promptInput" required></textarea>
+            </div>
+            <div class="form-actions">
+                <button id="submitBtn" class="btn primary">提交</button>
+                <button id="cancelBtn" class="btn">返回</button>
+            </div>
+        </div>
+
+        <!-- 导入表单 -->
+        <div id="importForm" class="import-form" style="display: none;">
+            <h2>导入记录</h2>
+            <div class="form-group">
+                <label for="importInput">请粘贴导出的JSON内容：</label>
+                <textarea id="importInput" required></textarea>
+            </div>
+            <div class="form-actions">
+                <button id="importSubmitBtn" class="btn primary">导入记录</button>
+                <button id="importCancelBtn" class="btn">返回</button>
+            </div>
+        </div>
+    </div>
+    <script src="popup.js"></script>
+</body>
+</html> 
