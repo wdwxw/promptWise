@@ -34,13 +34,35 @@ async function updateTitleList(titleList) {
     });
 }
 
-// 处理标题点击
+// 新增：创建通知提示函数
+function showNotification(message, isError = false) {
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: ${isError ? '#FFE4E4' : '#4CAF50'};
+        color: ${isError ? '#D32F2F' : 'white'};
+        padding: 12px 24px;
+        border-radius: 4px;
+        z-index: 1000000;
+    `;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    // 3秒后移除提示
+    setTimeout(() => {
+        notification.remove();
+    }, 3000);
+}
+
+// 修改：处理标题点击
 async function handleTitleClick(record) {
     const keywordInput = document.querySelector('.prompt-helper-float input');
     const keyword = keywordInput.value.trim();
     
     if (!keyword) {
-        alert('请先输入关键词');
+        showNotification('请先输入关键词', true);
         return;
     }
     
@@ -49,24 +71,7 @@ async function handleTitleClick(record) {
     await navigator.clipboard.writeText(formattedContent);
     
     // 提示用户
-    const notification = document.createElement('div');
-    notification.style.cssText = `
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        background: #4CAF50;
-        color: white;
-        padding: 12px 24px;
-        border-radius: 4px;
-        z-index: 1000000;
-    `;
-    notification.textContent = '内容已复制到剪贴板';
-    document.body.appendChild(notification);
-    
-    // 3秒后移除提示
-    setTimeout(() => {
-        notification.remove();
-    }, 3000);
+    showNotification('内容已复制到剪贴板');
 }
 
 // 监听存储变化
