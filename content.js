@@ -1,19 +1,36 @@
 // 创建悬浮层
 function createFloatLayer() {
+    // 先检查是否已经存在悬浮层
+    let existingLayer = document.querySelector('.prompt-helper-float');
+    if (existingLayer) {
+        existingLayer.remove();
+    }
+
     const floatLayer = document.createElement('div');
     floatLayer.className = 'prompt-helper-float';
+    floatLayer.setAttribute('data-prompt-helper', 'true');
+    
+    // 增加穿透属性，避免被网站遮挡
+    floatLayer.style.pointerEvents = 'none';
     
     // 创建关键词输入框
     const keywordInput = document.createElement('input');
     keywordInput.type = 'text';
     keywordInput.placeholder = '输入关键词...';
+    keywordInput.style.pointerEvents = 'auto';
     
     // 创建标题列表容器
     const titleList = document.createElement('div');
     titleList.className = 'title-list';
+    titleList.style.pointerEvents = 'auto';
     
     floatLayer.appendChild(keywordInput);
     floatLayer.appendChild(titleList);
+    
+    // 使用固定定位，并设置z-index更高
+    floatLayer.style.position = 'fixed';
+    floatLayer.style.zIndex = '99999';
+    
     document.body.appendChild(floatLayer);
     
     return { floatLayer, keywordInput, titleList };
@@ -66,12 +83,26 @@ async function handleTitleClick(record) {
         return;
     }
     
-    // 替换关键词并复制到剪贴板
-    const formattedContent = record.prompt.replace(new RegExp(`{${keyword}}`, 'g'), keyword);
-    await navigator.clipboard.writeText(formattedContent);
+    const formattedContent = record.prompt.replace(/{keyword}/g, `{${keyword}}`);
+
     
-    // 提示用户
-    showNotification('内容已复制到剪贴板');
+    // if (!replaced) {
+    //     showNotification('未找到可替换的关键词模式', true);
+    //     return;
+    // }
+    
+    try {
+        await navigator.clipboard.writeText(formattedContent);
+        showNotification('内容已复制到剪贴板');
+    } catch (error) {
+        showNotification('复制失败，请重试', true);
+        console.error('复制到剪贴板时发生错误:', error);
+    }
+}
+
+// 辅助函数：转义正则特殊字符
+function escapeRegExp(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 // 监听存储变化
@@ -84,10 +115,51 @@ chrome.storage.onChanged.addListener((changes) => {
     }
 });
 
-// 初始化
+// 新增：持续监听并重新插入悬浮层
+function ensureFloatLayerPersistence() {
+    const observer = new MutationObserver((mutations) => {
+        const existingLayer = document.querySelector('.prompt-helper-float');
+        if (!existingLayer) {
+            init(); // 重新初始化
+        }
+    });
+
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+}
+
+// 域名白名单配置
+const DOMAIN_WHITELIST = [
+    'chatgpt.com', 
+    'claude.ai', 
+    'gemini.google.com',
+    'grok.com' // 可以根据需要添加更多域名
+];
+
+// 检查当前域名是否在白名单中
+function isDomainAllowed() {
+    const currentDomain = window.location.hostname;
+    return DOMAIN_WHITELIST.some(domain => 
+        currentDomain === domain || currentDomain.endsWith('.' + domain)
+    );
+}
+
+// 修改初始化函数
 function init() {
-    const { titleList } = createFloatLayer();
-    updateTitleList(titleList);
+    try {
+        // 仅在允许的域名上初始化
+        if (!isDomainAllowed()) {
+            return;
+        }
+
+        const { titleList } = createFloatLayer();
+        updateTitleList(titleList);
+        ensureFloatLayerPersistence(); // 增加持久性监听
+    } catch (error) {
+        console.error('Prompt Helper初始化失败:', error);
+    }
 }
 
 // 启动应用
