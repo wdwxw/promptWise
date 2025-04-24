@@ -96,12 +96,11 @@ async function handleTitleClick(record) {
     const keywordInput = document.querySelector('.prompt-helper-float input');
     const keyword = keywordInput.value.trim();
     
-    if (!keyword) {
-        showNotification('请先输入关键词', true);
-        return;
-    }
+    // if (!keyword) {
+    //     showNotification('请先输入关键词', true);
+    // }
     
-    const formattedContent = record.prompt.replace(/{keyword}/g, `{${keyword}}`);
+    let formattedContent = keyword ? record.prompt.replace(/{keyword}/g, `{${keyword}}`) : record.prompt;
 
     
     // if (!replaced) {
