@@ -175,7 +175,7 @@ async function handleExport() {
     // 创建并触发下载
     const a = document.createElement('a');
     a.href = url;
-    a.download = `prompt_recode_${new Date().getFullYear()}${(new Date().getMonth() + 1).toString().padStart(2, '0')}${new Date().getDate().toString().padStart(2, '0')}${new Date().getHours().toString().padStart(2, '0')}${new Date().getMinutes().toString().padStart(2, '0')}${new Date().getSeconds().toString().padStart(2, '0')}.json`;
+    a.download = `prompt_recode_${new Date().getFullYear()}_${(new Date().getMonth() + 1).toString().padStart(2, '0')}_${new Date().getDate().toString().padStart(2, '0')}_${new Date().getHours().toString().padStart(2, '0')}_${new Date().getMinutes().toString().padStart(2, '0')}_${new Date().getSeconds().toString().padStart(2, '0')}.json`;
     document.body.appendChild(a);
     a.click();
     
