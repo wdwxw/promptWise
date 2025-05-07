@@ -1,4 +1,34 @@
 // 创建悬浮层
+let hideTimeout; // 用于存储延迟隐藏的定时器
+
+// 创建小图标
+function createTriggerIcon() {
+    const icon = document.createElement('div');
+    icon.className = 'prompt-helper-trigger';
+    icon.setAttribute('data-prompt-helper', 'true');
+    icon.innerHTML = '📝'; // 使用 emoji 作为图标
+    
+    icon.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        width: 32px;
+        height: 32px;
+        background: #ffffff;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        z-index: 99999;
+        font-size: 20px;
+    `;
+    
+    document.body.appendChild(icon);
+    return icon;
+}
+
 function createFloatLayer() {
     // 先检查是否已经存在悬浮层
     let existingLayer = document.querySelector('.prompt-helper-float');
@@ -17,17 +47,17 @@ function createFloatLayer() {
     const closeButton = document.createElement('div');
     closeButton.textContent = '×';
     closeButton.style.cssText = `
-     position: absolute;
-    top: 5px;
-    left: 5px;  // 修改这里，从 right 改为 left
-    cursor: pointer;
-    font-size: 20px;
-    color: #666;
-    z-index: 100000;
-    pointer-events: auto;
+        position: absolute;
+        top: 5px;
+        left: 5px;
+        cursor: pointer;
+        font-size: 20px;
+        color: #666;
+        z-index: 100000;
+        pointer-events: auto;
     `;
     closeButton.addEventListener('click', () => {
-        floatLayer.style.display = 'none';
+        hideFloatLayer(floatLayer);
     });
     
     // 创建关键词输入框
@@ -45,13 +75,58 @@ function createFloatLayer() {
     floatLayer.appendChild(keywordInput);
     floatLayer.appendChild(titleList);
     
-    // 使用固定定位，并设置z-index更高
-    floatLayer.style.position = 'fixed';
-    floatLayer.style.zIndex = '99999';
+    // 使用固定定位，并设置初始状态为隐藏
+    floatLayer.style.cssText = `
+        position: fixed;
+        top: 60px;
+        right: 20px;
+        z-index: 99999;
+        background: white;
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        display: none;
+        min-width: 200px;
+        max-width: 300px;
+    `;
+    
+    // 添加鼠标事件处理
+    floatLayer.addEventListener('mouseenter', () => {
+        if (hideTimeout) {
+            clearTimeout(hideTimeout);
+        }
+    });
+    
+    floatLayer.addEventListener('mouseleave', () => {
+        startHideTimer(floatLayer);
+    });
     
     document.body.appendChild(floatLayer);
     
     return { floatLayer, keywordInput, titleList };
+}
+
+// 显示悬浮层
+function showFloatLayer(floatLayer) {
+    if (hideTimeout) {
+        clearTimeout(hideTimeout);
+    }
+    floatLayer.style.display = 'block';
+}
+
+// 隐藏悬浮层
+function hideFloatLayer(floatLayer) {
+    floatLayer.style.display = 'none';
+}
+
+// 开始隐藏计时器
+function startHideTimer(floatLayer) {
+    if (hideTimeout) {
+        clearTimeout(hideTimeout);
+    }
+    hideTimeout = setTimeout(() => {
+        hideFloatLayer(floatLayer);
+    }, 2000);
 }
 
 // 更新标题列表
@@ -172,9 +247,20 @@ function init() {
             return;
         }
 
-        const { titleList } = createFloatLayer();
+        const { floatLayer, titleList } = createFloatLayer();
+        const triggerIcon = createTriggerIcon();
+        
+        // 添加图标的鼠标事件
+        triggerIcon.addEventListener('mouseenter', () => {
+            showFloatLayer(floatLayer);
+        });
+        
+        triggerIcon.addEventListener('mouseleave', () => {
+            startHideTimer(floatLayer);
+        });
+        
         updateTitleList(titleList);
-        ensureFloatLayerPersistence(); // 增加持久性监听
+        ensureFloatLayerPersistence();
     } catch (error) {
         console.error('Prompt Helper初始化失败:', error);
     }
