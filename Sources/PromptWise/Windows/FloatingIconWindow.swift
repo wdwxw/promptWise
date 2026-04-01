@@ -112,6 +112,7 @@ private struct FloatingIconContent: View {
                 .foregroundStyle(.white)
         }
         .frame(width: 50, height: 50)
+        .clipShape(Circle())
         .scaleEffect(isHovered ? 1.1 : 1.0)
         .animation(.spring(response: 0.3), value: isHovered)
         .onHover { hovering in
