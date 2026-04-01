@@ -9,7 +9,8 @@ struct QuickAccessView: View {
     private let maxPerColumn = 10
 
     private var recentPrompts: [Prompt] {
-        return Array(store.prompts.prefix(theme.quickAccessItemCount))
+        let filtered = store.prompts(for: theme.quickAccessCategoryId)
+        return Array(filtered.prefix(theme.quickAccessItemCount))
     }
 
     private var columns: [[Prompt]] {

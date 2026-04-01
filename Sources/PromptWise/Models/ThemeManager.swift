@@ -40,6 +40,17 @@ final class ThemeManager: ObservableObject {
         didSet { UserDefaults.standard.set(quickAccessItemCount, forKey: "quickAccessItemCount") }
     }
 
+    /// 快捷图标列表显示的分类（nil = 全部）
+    @Published var quickAccessCategoryId: UUID? {
+        didSet {
+            if let id = quickAccessCategoryId {
+                UserDefaults.standard.set(id.uuidString, forKey: "quickAccessCategoryId")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "quickAccessCategoryId")
+            }
+        }
+    }
+
     static let dismissDelayOptions: [Double] = [1, 2, 3, 5, 8, 10]
     static let itemCountOptions: [Int] = [5, 10, 15, 20, 30]
 
@@ -51,6 +62,11 @@ final class ThemeManager: ObservableObject {
         self.quickAccessDismissDelay = savedDelay ?? 3.0
         let savedCount = UserDefaults.standard.object(forKey: "quickAccessItemCount") as? Int
         self.quickAccessItemCount = savedCount ?? 10
+        if let idString = UserDefaults.standard.string(forKey: "quickAccessCategoryId") {
+            self.quickAccessCategoryId = UUID(uuidString: idString)
+        } else {
+            self.quickAccessCategoryId = nil
+        }
     }
 
     // MARK: - Panel Background (#1e1e1e / #ffffff)

@@ -77,7 +77,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func setupSettingsWindow() {
-        let settingsView = SettingsView()
+        let settingsView = SettingsView(store: store)
             .environmentObject(ThemeManager.shared)
         settingsWindow = SettingsWindow(contentView: settingsView)
     }

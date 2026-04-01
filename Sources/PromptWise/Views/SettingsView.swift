@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject var theme: ThemeManager
+    @ObservedObject var store: PromptStore
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -22,7 +23,7 @@ struct SettingsView: View {
 
             Divider()
 
-            HStack(spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
                 Text("快捷图标：")
                     .font(.system(size: 13))
                     .frame(width: 70, alignment: .trailing)
@@ -62,11 +63,36 @@ struct SettingsView: View {
                             .frame(width: 70)
                             .controlSize(.small)
                         }
+
+                        HStack(spacing: 6) {
+                            Text("显示分类")
+                                .font(.system(size: 12))
+                                .foregroundStyle(.secondary)
+
+                            Picker("", selection: $theme.quickAccessCategoryId) {
+                                Text("全部").tag(nil as UUID?)
+                                ForEach(store.categories) { category in
+                                    Label(category.name, systemImage: category.icon)
+                                        .tag(Optional(category.id))
+                                }
+                            }
+                            .pickerStyle(.menu)
+                            .frame(width: 100)
+                            .controlSize(.small)
+                        }
                     }
                 }
             }
         }
+        }
         .padding(30)
         .frame(width: 340)
+
+        Spacer()
+
+        Text("wangchen12@weibo")
+            .font(.system(size: 11))
+            .foregroundStyle(.secondary)
+            .padding(.bottom, 10)
     }
 }
