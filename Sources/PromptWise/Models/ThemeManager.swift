@@ -51,8 +51,8 @@ final class ThemeManager: ObservableObject {
         }
     }
 
-    static let dismissDelayOptions: [Double] = [1, 2, 3, 5, 8, 10]
-    static let itemCountOptions: [Int] = [5, 10, 15, 20, 30]
+    static let dismissDelayOptions: [Double] = [0.5, 1, 2, 3, 5, 8, 10]
+    static let itemCountOptions: [Int] = [5, 10, 15, 20, 30, 50]
 
     private init() {
         let saved = UserDefaults.standard.string(forKey: "appThemeMode") ?? "dark"

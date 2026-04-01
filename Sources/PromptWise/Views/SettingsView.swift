@@ -57,7 +57,7 @@ struct SettingsView: View {
 
                                 Picker("", selection: $theme.quickAccessDismissDelay) {
                                     ForEach(ThemeManager.dismissDelayOptions, id: \.self) { sec in
-                                        Text("\(Int(sec)) 秒").tag(sec)
+                                        Text("\(sec, specifier: "%.1f") 秒").tag(sec)
                                     }
                                 }
                                 .pickerStyle(.menu)
@@ -91,7 +91,7 @@ struct SettingsView: View {
             Spacer()
                 .frame(height: 2)
 
-            Text("wangchen12@weibo")
+            Text("power by weibo_chaohua@wangchen12")
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .padding(.bottom, 10)

@@ -2,7 +2,7 @@ import SwiftUI
 
 struct QuickAccessView: View {
     @ObservedObject var store: PromptStore
-    @ObservedObject private var theme = ThemeManager.shared
+    @EnvironmentObject private var theme: ThemeManager
     var onHoverChanged: ((Bool) -> Void)?
 
     @State private var copiedId: UUID?
@@ -64,16 +64,46 @@ private struct QuickAccessItemView: View {
     let onCopy: () -> Void
 
     @State private var isHovered = false
+    @EnvironmentObject private var theme: ThemeManager
+
+    private var isDark: Bool { theme.mode == .dark }
+
+    private var backgroundColor: Color {
+        if isHovered {
+            return Color(nsColor: NSColor(red: 0.486, green: 0.227, blue: 0.929, alpha: 0.5))
+        }
+        return isDark
+            ? Color.black.opacity(0.65)
+            : Color.white.opacity(0.65)
+    }
+
+    private var foregroundColor: Color {
+        if isHovered && !isDark {
+            return .white
+        }
+        return isDark
+            ? .white.opacity(0.8)
+            : theme.textPrimary
+    }
+
+    private var iconColor: Color {
+        if isHovered && !isDark {
+            return .white.opacity(0.8)
+        }
+        return isDark
+            ? .white.opacity(0.35)
+            : theme.textSecondary
+    }
 
     var body: some View {
         HStack(spacing: 6) {
             Image(systemName: "doc.text")
                 .font(.system(size: 10))
-                .foregroundStyle(.white.opacity(0.35))
+                .foregroundStyle(iconColor)
 
             Text(prompt.title)
                 .font(.system(size: 11))
-                .foregroundStyle(.white.opacity(0.8))
+                .foregroundStyle(foregroundColor)
                 .lineLimit(1)
 
             Spacer(minLength: 0)
@@ -90,11 +120,9 @@ private struct QuickAccessItemView: View {
         .frame(maxWidth: 180)
         .background(
             Capsule()
-                .fill(isHovered
-                    ? Color(nsColor: NSColor(red: 0.486, green: 0.227, blue: 0.929, alpha: 0.5))
-                    : Color.black.opacity(0.65))
+                .fill(backgroundColor)
         )
-        .shadow(color: .black.opacity(0.15), radius: 2, y: 1)
+        .shadow(color: .black.opacity(isDark ? 0.15 : 0.08), radius: 2, y: 1)
         .offset(x: isHovered ? 4 : 0)
         .contentShape(Capsule())
         .onTapGesture { onCopy() }

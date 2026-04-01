@@ -73,6 +73,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.updateQuickAccessVisibility()
             }
         )
+        .environmentObject(ThemeManager.shared)
         quickAccessWindow = QuickAccessWindow(contentView: qaView)
     }
 
