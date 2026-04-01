@@ -1,0 +1,9 @@
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# Built macOS app
+PromptWise.app/
+
+# macOS
+.DS_Store

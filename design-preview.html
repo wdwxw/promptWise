@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PromptWise 设计方案预览</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+    background: #0f0f11;
+    color: #e0e0e0;
+    min-height: 100vh;
+    padding: 40px;
+  }
+
+  h1 {
+    text-align: center;
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, #a78bfa, #60a5fa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .subtitle {
+    text-align: center;
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 48px;
+  }
+
+  .section-title {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 48px 0 24px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #222;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-title .badge {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: #1e1e24;
+    color: #888;
+    font-weight: 500;
+  }
+
+  .designs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+    gap: 32px;
+    margin-bottom: 40px;
+  }
+
+  .design-card {
+    background: #16161a;
+    border: 1px solid #222;
+    border-radius: 16px;
+    overflow: hidden;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .design-card:hover {
+    border-color: #444;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  }
+
+  .design-label {
+    padding: 16px 20px;
+    border-bottom: 1px solid #1e1e24;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .design-label h3 {
+    font-size: 15px;
+    font-weight: 600;
+    color: #e0e0e0;
+  }
+  .design-label .tag {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 500;
+  }
+  .tag-recommend { background: #1a3a2a; color: #4ade80; }
+  .tag-minimal { background: #1a1a2e; color: #818cf8; }
+  .tag-classic { background: #2a1a1a; color: #f87171; }
+  .tag-playful { background: #2a2a1a; color: #fbbf24; }
+
+  .design-preview {
+    padding: 24px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 420px;
+    background: #111;
+  }
+
+  /* ============== Panel Style A: Glassmorphism ============== */
+  .panel-a {
+    width: 360px;
+    background: rgba(28, 28, 36, 0.85);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    overflow: hidden;
+  }
+  .panel-a .pa-header {
+    padding: 16px 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .panel-a .pa-header .logo-icon {
+    width: 28px; height: 28px;
+    background: linear-gradient(135deg, #7c3aed, #3b82f6);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; color: white;
+  }
+  .panel-a .pa-header h2 { font-size: 15px; font-weight: 600; flex: 1; }
+  .panel-a .pa-header .close-btn {
+    width: 20px; height: 20px; border-radius: 50%; background: rgba(255,255,255,0.06);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; color: #666; cursor: pointer;
+  }
+
+  .panel-a .pa-cats {
+    padding: 10px 18px;
+    display: flex; gap: 6px; overflow: hidden;
+  }
+  .pa-cat {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .pa-cat.active {
+    background: rgba(124, 58, 237, 0.2);
+    color: #a78bfa;
+    border: 1px solid rgba(124,58,237,0.3);
+  }
+  .pa-cat.inactive {
+    background: transparent;
+    color: #666;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .panel-a .pa-search {
+    margin: 0 18px 10px;
+    padding: 8px 12px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 10px;
+    display: flex; align-items: center; gap: 8px;
+    border: 1px solid rgba(255,255,255,0.04);
+  }
+  .pa-search .icon { color: #444; font-size: 12px; }
+  .pa-search input {
+    background: transparent; border: none; outline: none;
+    color: #aaa; font-size: 13px; width: 100%;
+    font-family: inherit;
+  }
+  .pa-search input::placeholder { color: #444; }
+
+  .panel-a .pa-list { padding: 4px 10px 10px; }
+  .pa-item {
+    padding: 10px 12px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: background 0.12s;
+    margin-bottom: 2px;
+  }
+  .pa-item:hover { background: rgba(255,255,255,0.04); }
+  .pa-item .drag { color: #333; font-size: 10px; }
+  .pa-item .title { font-size: 13px; color: #ccc; flex: 1; }
+  .pa-item .actions { display: flex; gap: 4px; opacity: 0; transition: opacity 0.15s; }
+  .pa-item:hover .actions { opacity: 1; }
+  .pa-item .act-btn {
+    width: 22px; height: 22px; border-radius: 6px;
+    background: rgba(255,255,255,0.05);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; color: #666; cursor: pointer;
+  }
+
+  .panel-a .pa-add {
+    margin: 0 18px 14px;
+    padding: 8px;
+    border-radius: 10px;
+    border: 1px dashed rgba(255,255,255,0.08);
+    text-align: center;
+    font-size: 12px;
+    color: #555;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .panel-a .pa-add:hover { border-color: #7c3aed; color: #a78bfa; }
+
+  /* ============== Panel Style B: Clean Light ============== */
+  .panel-b {
+    width: 360px;
+    background: #fafafa;
+    border-radius: 14px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+    overflow: hidden;
+    color: #333;
+  }
+  .panel-b .pb-header {
+    padding: 14px 18px;
+    display: flex; align-items: center; gap: 8px;
+    background: #fff;
+    border-bottom: 1px solid #eee;
+  }
+  .panel-b .pb-header .icon {
+    font-size: 18px;
+  }
+  .panel-b .pb-header h2 {
+    font-size: 15px; font-weight: 600; flex: 1; color: #222;
+  }
+  .panel-b .pb-toolbar {
+    padding: 10px 18px;
+    display: flex; gap: 8px; align-items: center;
+    background: #fff;
+    border-bottom: 1px solid #eee;
+  }
+  .pb-search-box {
+    flex: 1;
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: #f0f0f5;
+    font-size: 12px;
+    color: #999;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .pb-view-toggle {
+    display: flex; border-radius: 6px; overflow: hidden;
+    border: 1px solid #e0e0e0;
+  }
+  .pb-vt {
+    padding: 4px 8px; font-size: 11px; color: #888;
+    cursor: pointer;
+  }
+  .pb-vt.active { background: #7c3aed; color: #fff; }
+
+  .panel-b .pb-cats {
+    padding: 8px 18px;
+    display: flex; gap: 6px;
+    background: #fff;
+  }
+  .pb-cat {
+    padding: 4px 10px; border-radius: 16px; font-size: 11px;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .pb-cat.active { background: #7c3aed; color: #fff; }
+  .pb-cat.inactive { background: #f0f0f5; color: #777; }
+
+  .panel-b .pb-list { padding: 6px 12px 12px; }
+  .pb-item {
+    padding: 10px 12px; border-radius: 8px;
+    display: flex; align-items: center; gap: 8px;
+    cursor: pointer; transition: background 0.12s;
+    margin-bottom: 1px;
+  }
+  .pb-item:hover { background: #f0f0f5; }
+  .pb-item .drag { color: #ccc; font-size: 10px; }
+  .pb-item .title { font-size: 13px; color: #333; flex: 1; font-weight: 500; }
+  .pb-item .actions { display: flex; gap: 4px; opacity: 0; transition: opacity 0.15s; }
+  .pb-item:hover .actions { opacity: 1; }
+  .pb-item .act-btn {
+    width: 22px; height: 22px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; color: #999; cursor: pointer;
+  }
+
+  /* ============== Panel Style C: Notion-like ============== */
+  .panel-c {
+    width: 360px;
+    background: #1e1e1e;
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+    overflow: hidden;
+    border: 1px solid #2a2a2a;
+  }
+  .panel-c .pc-header {
+    padding: 10px 14px;
+    display: flex; align-items: center; gap: 8px;
+    border-bottom: 1px solid #2a2a2a;
+  }
+  .panel-c .pc-header h2 {
+    font-size: 13px; font-weight: 500; flex: 1; color: #999;
+  }
+  .pc-btn { font-size: 11px; color: #555; cursor: pointer; padding: 4px 6px; border-radius: 4px; }
+  .pc-btn:hover { background: #2a2a2a; color: #aaa; }
+
+  .panel-c .pc-search {
+    margin: 8px 14px;
+    padding: 6px 10px;
+    background: #252525;
+    border-radius: 6px;
+    font-size: 12px; color: #555;
+    display: flex; align-items: center; gap: 6px;
+    border: 1px solid #2a2a2a;
+  }
+  .panel-c .pc-list { padding: 4px 6px 8px; }
+  .pc-group-title {
+    padding: 4px 12px 4px;
+    font-size: 11px;
+    color: #555;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .pc-item {
+    padding: 6px 12px;
+    border-radius: 6px;
+    display: flex; align-items: center; gap: 8px;
+    cursor: pointer; transition: background 0.1s;
+  }
+  .pc-item:hover { background: #252525; }
+  .pc-item .icon { font-size: 13px; }
+  .pc-item .title { font-size: 13px; color: #bbb; flex: 1; }
+  .pc-item .shortcut {
+    font-size: 10px; color: #444; padding: 2px 5px;
+    background: #252525; border-radius: 3px;
+    font-family: monospace;
+  }
+
+  /* ============== Panel Style D: Sidebar Card ============== */
+  .panel-d {
+    width: 360px;
+    background: linear-gradient(180deg, #1a1a2e 0%, #16162a 100%);
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.05);
+  }
+  .panel-d .pd-header {
+    padding: 18px 20px 14px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .pd-logo {
+    width: 32px; height: 32px;
+    background: linear-gradient(135deg, #f472b6, #7c3aed, #3b82f6);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+  .panel-d .pd-header h2 { font-size: 16px; font-weight: 700; flex: 1; color: #eee; }
+  .panel-d .pd-header .add-btn {
+    padding: 5px 12px; border-radius: 8px;
+    background: linear-gradient(135deg, #7c3aed, #6366f1);
+    color: #fff; font-size: 12px; font-weight: 500;
+    cursor: pointer;
+  }
+
+  .panel-d .pd-search {
+    margin: 0 20px 12px;
+    padding: 10px 14px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 12px;
+    font-size: 13px; color: #555;
+    display: flex; align-items: center; gap: 8px;
+    border: 1px solid rgba(255,255,255,0.04);
+  }
+  .panel-d .pd-cards {
+    padding: 0 14px 14px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .pd-card {
+    padding: 14px 12px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 12px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+  }
+  .pd-card:hover {
+    background: rgba(124,58,237,0.08);
+    border-color: rgba(124,58,237,0.2);
+  }
+  .pd-card .emoji { font-size: 22px; margin-bottom: 6px; }
+  .pd-card .title { font-size: 12px; color: #bbb; font-weight: 500; line-height: 1.3; }
+  .pd-card .cat-tag {
+    position: absolute; top: 6px; right: 6px;
+    font-size: 9px; padding: 1px 5px; border-radius: 4px;
+    background: rgba(124,58,237,0.15); color: #a78bfa;
+  }
+
+  /* ============== Icon Designs ============== */
+  .icons-grid {
+    display: flex;
+    gap: 40px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-bottom: 40px;
+  }
+  .icon-option {
+    text-align: center;
+    padding: 24px;
+    background: #16161a;
+    border: 1px solid #222;
+    border-radius: 16px;
+    transition: all 0.2s;
+    width: 160px;
+  }
+  .icon-option:hover {
+    border-color: #444;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  }
+  .icon-preview {
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    margin: 0 auto 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    cursor: pointer;
+    transition: transform 0.2s;
+  }
+  .icon-preview:hover { transform: scale(1.15); }
+  .icon-name { font-size: 13px; font-weight: 600; color: #ccc; margin-bottom: 4px; }
+  .icon-desc { font-size: 11px; color: #666; }
+
+  .icon-1 { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
+  .icon-2 { background: linear-gradient(135deg, #0f172a, #1e293b); border: 2px solid #334155; }
+  .icon-3 { background: linear-gradient(135deg, #ec4899, #8b5cf6, #3b82f6); }
+  .icon-4 {
+    background: rgba(255,255,255,0.08);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.15);
+  }
+  .icon-5 { background: linear-gradient(135deg, #f97316, #eab308); }
+  .icon-6 { background: #000; border: 2px solid #333; }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    padding: 40px 0;
+    color: #444;
+    font-size: 12px;
+    border-top: 1px solid #1a1a1a;
+    margin-top: 40px;
+  }
+</style>
+</head>
+<body>
+
+<h1>PromptWise 设计方案</h1>
+<p class="subtitle">选择你喜欢的面板样式和悬浮图标设计</p>
+
+<!-- ========== Icon Designs ========== -->
+<div class="section-title">
+  🎨 悬浮图标设计
+  <span class="badge">6 个方案</span>
+</div>
+
+<div class="icons-grid">
+  <div class="icon-option">
+    <div class="icon-preview icon-1">💬</div>
+    <div class="icon-name">A. 靛紫渐变</div>
+    <div class="icon-desc">当前方案<br>沉稳专业</div>
+  </div>
+  <div class="icon-option">
+    <div class="icon-preview icon-2">⚡</div>
+    <div class="icon-name">B. 深色极简</div>
+    <div class="icon-desc">暗色底 + 亮边框<br>低调内敛</div>
+  </div>
+  <div class="icon-option">
+    <div class="icon-preview icon-3">✨</div>
+    <div class="icon-name">C. 彩虹渐变</div>
+    <div class="icon-desc">粉紫蓝渐变<br>活泼醒目</div>
+  </div>
+  <div class="icon-option">
+    <div class="icon-preview icon-4">📝</div>
+    <div class="icon-name">D. 毛玻璃</div>
+    <div class="icon-desc">半透明 + 模糊<br>融入桌面</div>
+  </div>
+  <div class="icon-option">
+    <div class="icon-preview icon-5">🔥</div>
+    <div class="icon-name">E. 暖色活力</div>
+    <div class="icon-desc">橙黄渐变<br>温暖活力</div>
+  </div>
+  <div class="icon-option">
+    <div class="icon-preview icon-6">🤖</div>
+    <div class="icon-name">F. 纯黑科技</div>
+    <div class="icon-desc">纯黑 + 细边框<br>科技极客</div>
+  </div>
+</div>
+
+<!-- ========== Panel Designs ========== -->
+<div class="section-title">
+  📋 面板界面设计
+  <span class="badge">4 个方案</span>
+</div>
+
+<div class="designs-grid">
+
+  <!-- Panel A: Glassmorphism Dark -->
+  <div class="design-card">
+    <div class="design-label">
+      <h3>A. 毛玻璃暗色</h3>
+      <span class="tag tag-recommend">推荐</span>
+    </div>
+    <div class="design-preview">
+      <div class="panel-a">
+        <div class="pa-header">
+          <div class="logo-icon">💬</div>
+          <h2>PromptWise</h2>
+          <div class="close-btn">✕</div>
+        </div>
+        <div class="pa-cats">
+          <div class="pa-cat active">全部</div>
+          <div class="pa-cat inactive">💻 编程</div>
+          <div class="pa-cat inactive">✍️ 写作</div>
+          <div class="pa-cat inactive">🌐 翻译</div>
+        </div>
+        <div class="pa-search">
+          <span class="icon">🔍</span>
+          <input type="text" placeholder="搜索提示语..." disabled>
+        </div>
+        <div class="pa-list">
+          <div class="pa-item">
+            <span class="drag">⋮⋮</span>
+            <span class="title">代码审查助手</span>
+            <div class="actions"><div class="act-btn">✏️</div><div class="act-btn">🗑</div></div>
+          </div>
+          <div class="pa-item">
+            <span class="drag">⋮⋮</span>
+            <span class="title">英文润色专家</span>
+            <div class="actions"><div class="act-btn">✏️</div><div class="act-btn">🗑</div></div>
+          </div>
+          <div class="pa-item">
+            <span class="drag">⋮⋮</span>
+            <span class="title">SQL 查询优化</span>
+            <div class="actions"><div class="act-btn">✏️</div><div class="act-btn">🗑</div></div>
+          </div>
+          <div class="pa-item">
+            <span class="drag">⋮⋮</span>
+            <span class="title">周报总结生成器</span>
+            <div class="actions"><div class="act-btn">✏️</div><div class="act-btn">🗑</div></div>
+          </div>
+          <div class="pa-item">
+            <span class="drag">⋮⋮</span>
+            <span class="title">产品需求分析</span>
+            <div class="actions"><div class="act-btn">✏️</div><div class="act-btn">🗑</div></div>
+          </div>
+        </div>
+        <div class="pa-add">＋ 新增提示语</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panel B: Clean Light -->
+  <div class="design-card">
+    <div class="design-label">
+      <h3>B. 清爽亮色</h3>
+      <span class="tag tag-classic">经典</span>
+    </div>
+    <div class="design-preview">
+      <div class="panel-b">
+        <div class="pb-header">
+          <span class="icon">💬</span>
+          <h2>PromptWise</h2>
+          <div class="pb-view-toggle">
+            <div class="pb-vt active">☰</div>
+            <div class="pb-vt">⊞</div>
+          </div>
+        </div>
+        <div class="pb-toolbar">
+          <div class="pb-search-box">
+            <span>🔍</span>
+            <span>搜索提示语...</span>
+          </div>
+          <div style="padding:4px 10px;border-radius:6px;background:#7c3aed;color:#fff;font-size:12px;cursor:pointer;">＋ 新增</div>
+        </div>
+        <div class="pb-cats">
+          <div class="pb-cat active">全部</div>
+          <div class="pb-cat inactive">编程</div>
+          <div class="pb-cat inactive">写作</div>
+          <div class="pb-cat inactive">翻译</div>
+        </div>
+        <div class="pb-list">
+          <div class="pb-item">
+            <span class="drag">⋮⋮</span>
+            <span class="title">代码审查助手</span>
+            <div class="actions"><div class="act-btn">✏️</div><div class="act-btn">🗑</div></div>
+          </div>
+          <div class="pb-item">
+            <span class="drag">⋮⋮</span>
+            <span class="title">英文润色专家</span>
+            <div class="actions"><div class="act-btn">✏️</div><div class="act-btn">🗑</div></div>
+          </div>
+          <div class="pb-item">
+            <span class="drag">⋮⋮</span>
+            <span class="title">SQL 查询优化</span>
+            <div class="actions"><div class="act-btn">✏️</div><div class="act-btn">🗑</div></div>
+          </div>
+          <div class="pb-item">
+            <span class="drag">⋮⋮</span>
+            <span class="title">周报总结生成器</span>
+            <div class="actions"><div class="act-btn">✏️</div><div class="act-btn">🗑</div></div>
+          </div>
+          <div class="pb-item">
+            <span class="drag">⋮⋮</span>
+            <span class="title">产品需求分析</span>
+            <div class="actions"><div class="act-btn">✏️</div><div class="act-btn">🗑</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panel C: Notion-like -->
+  <div class="design-card">
+    <div class="design-label">
+      <h3>C. Notion 风格</h3>
+      <span class="tag tag-minimal">极简</span>
+    </div>
+    <div class="design-preview">
+      <div class="panel-c">
+        <div class="pc-header">
+          <h2>⚡ 提示语</h2>
+          <span class="pc-btn">＋ 新建</span>
+          <span class="pc-btn">⚙</span>
+        </div>
+        <div class="pc-search">
+          <span>🔍</span>
+          <span style="color:#444">搜索...</span>
+        </div>
+        <div class="pc-list">
+          <div class="pc-group-title">💻 编程</div>
+          <div class="pc-item">
+            <span class="icon">📄</span>
+            <span class="title">代码审查助手</span>
+            <span class="shortcut">⌘1</span>
+          </div>
+          <div class="pc-item">
+            <span class="icon">📄</span>
+            <span class="title">SQL 查询优化</span>
+            <span class="shortcut">⌘2</span>
+          </div>
+          <div class="pc-group-title" style="margin-top:8px">✍️ 写作</div>
+          <div class="pc-item">
+            <span class="icon">📄</span>
+            <span class="title">英文润色专家</span>
+            <span class="shortcut">⌘3</span>
+          </div>
+          <div class="pc-item">
+            <span class="icon">📄</span>
+            <span class="title">周报总结生成器</span>
+            <span class="shortcut">⌘4</span>
+          </div>
+          <div class="pc-group-title" style="margin-top:8px">🌐 翻译</div>
+          <div class="pc-item">
+            <span class="icon">📄</span>
+            <span class="title">中英互译</span>
+            <span class="shortcut">⌘5</span>
+          </div>
+          <div class="pc-item">
+            <span class="icon">📄</span>
+            <span class="title">产品需求分析</span>
+            <span class="shortcut">⌘6</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panel D: Card Grid -->
+  <div class="design-card">
+    <div class="design-label">
+      <h3>D. 卡片宫格</h3>
+      <span class="tag tag-playful">活泼</span>
+    </div>
+    <div class="design-preview">
+      <div class="panel-d">
+        <div class="pd-header">
+          <div class="pd-logo">✨</div>
+          <h2>PromptWise</h2>
+          <div class="add-btn">＋ 新增</div>
+        </div>
+        <div class="pd-search">
+          <span>🔍</span>
+          <span style="color:#444">搜索提示语...</span>
+        </div>
+        <div class="pd-cards">
+          <div class="pd-card">
+            <div class="cat-tag">编程</div>
+            <div class="emoji">🔍</div>
+            <div class="title">代码审查助手</div>
+          </div>
+          <div class="pd-card">
+            <div class="cat-tag">写作</div>
+            <div class="emoji">✍️</div>
+            <div class="title">英文润色专家</div>
+          </div>
+          <div class="pd-card">
+            <div class="cat-tag">编程</div>
+            <div class="emoji">🗄️</div>
+            <div class="title">SQL 查询优化</div>
+          </div>
+          <div class="pd-card">
+            <div class="cat-tag">写作</div>
+            <div class="emoji">📊</div>
+            <div class="title">周报总结生成器</div>
+          </div>
+          <div class="pd-card">
+            <div class="cat-tag">翻译</div>
+            <div class="emoji">🌐</div>
+            <div class="title">中英互译</div>
+          </div>
+          <div class="pd-card">
+            <div class="cat-tag">编程</div>
+            <div class="emoji">📋</div>
+            <div class="title">产品需求分析</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  PromptWise Design Preview — 在浏览器中打开此文件查看效果，选择你喜欢的方案告诉我编号即可
+</div>
+
+</body>
+</html>
