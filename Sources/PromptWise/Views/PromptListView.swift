@@ -3,6 +3,7 @@ import SwiftUI
 // MARK: - List View
 
 struct PromptListView: View {
+    @EnvironmentObject var theme: ThemeManager
     let prompts: [Prompt]
     @ObservedObject var store: PromptStore
     @Binding var copiedPromptId: UUID?
@@ -10,6 +11,8 @@ struct PromptListView: View {
     let onCopy: (Prompt) -> Void
 
     @State private var draggingPrompt: Prompt?
+    @State private var originalOrder: [UUID]?
+    @State private var dropFlag = DropFlag()
 
     var body: some View {
         ScrollView {
@@ -21,13 +24,25 @@ struct PromptListView: View {
                         onCopy: { onCopy(prompt) },
                         onEdit: { onEdit(prompt) },
                         onDelete: { store.deletePrompt(id: prompt.id) },
-                        onDragStarted: { p in draggingPrompt = p },
-                        onDragEnded: { draggingPrompt = nil }
+                        onToggleStar: { store.toggleStar(id: prompt.id) },
+                        onDragStarted: { p in
+                            dropFlag.accepted = false
+                            originalOrder = store.prompts.map(\.id)
+                            draggingPrompt = p
+                        },
+                        onDragEnded: {
+                            if !dropFlag.accepted, let order = originalOrder {
+                                store.restoreOrder(order)
+                            }
+                            draggingPrompt = nil
+                            originalOrder = nil
+                        }
                     )
                     .onDrop(of: [.text], delegate: PromptDropDelegate(
                         targetPrompt: prompt,
                         store: store,
-                        draggingPrompt: $draggingPrompt
+                        draggingPrompt: $draggingPrompt,
+                        dropFlag: dropFlag
                     ))
                 }
             }
@@ -40,11 +55,13 @@ struct PromptListView: View {
 // MARK: - Row View
 
 struct PromptRowView: View {
+    @EnvironmentObject var theme: ThemeManager
     let prompt: Prompt
     let isCopied: Bool
     let onCopy: () -> Void
     let onEdit: () -> Void
     let onDelete: () -> Void
+    let onToggleStar: () -> Void
     let onDragStarted: (Prompt) -> Void
     let onDragEnded: () -> Void
 
@@ -61,13 +78,13 @@ struct PromptRowView: View {
             )
 
             HStack(spacing: 8) {
-                Image(systemName: "doc.text")
+                Image(systemName: prompt.isStarred ? "star.fill" : "doc.text")
                     .font(.system(size: 12))
-                    .foregroundStyle(Theme.textTertiary)
+                    .foregroundStyle(prompt.isStarred ? .yellow : theme.textTertiary)
 
                 Text(prompt.title)
                     .font(.system(size: 13))
-                    .foregroundStyle(Theme.textPrimary)
+                    .foregroundStyle(theme.textPrimary)
                     .lineLimit(1)
 
                 Spacer()
@@ -89,6 +106,11 @@ struct PromptRowView: View {
                 Spacer()
                 if isHovered && !isCopied {
                     HStack(spacing: 2) {
+                        rowActionButton(
+                            icon: prompt.isStarred ? "star.fill" : "star",
+                            color: prompt.isStarred ? .yellow : nil,
+                            action: onToggleStar
+                        )
                         rowActionButton(icon: "pencil", action: onEdit)
                         rowActionButton(icon: "trash", color: .red.opacity(0.6), action: onDelete)
                     }
@@ -100,7 +122,7 @@ struct PromptRowView: View {
         .padding(.vertical, 6)
         .background(
             RoundedRectangle(cornerRadius: 6)
-                .fill(isHovered ? Theme.surfaceBg : Color.clear)
+                .fill(isHovered ? theme.surfaceBg : Color.clear)
         )
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.1)) {
@@ -119,13 +141,13 @@ struct PromptRowView: View {
         }
     }
 
-    private func rowActionButton(icon: String, color: Color = Theme.textTertiary, action: @escaping () -> Void) -> some View {
+    private func rowActionButton(icon: String, color: Color? = nil, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: icon)
                 .font(.system(size: 10))
-                .foregroundStyle(color)
+                .foregroundStyle(color ?? theme.textTertiary)
                 .frame(width: 22, height: 22)
-                .background(Theme.border)
+                .background(theme.border)
                 .clipShape(RoundedRectangle(cornerRadius: 4))
         }
         .buttonStyle(.plain)
@@ -135,31 +157,32 @@ struct PromptRowView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(prompt.title)
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(Theme.textPrimary)
+                .foregroundStyle(theme.textPrimary)
 
-            Rectangle().fill(Theme.border).frame(height: 1)
+            Rectangle().fill(theme.border).frame(height: 1)
 
             if let attributed = try? AttributedString(markdown: prompt.content) {
                 Text(attributed)
                     .font(.system(size: 12))
-                    .foregroundStyle(Theme.textPrimary)
+                    .foregroundStyle(theme.textPrimary)
                     .textSelection(.enabled)
             } else {
                 Text(prompt.content)
                     .font(.system(size: 12))
-                    .foregroundStyle(Theme.textPrimary)
+                    .foregroundStyle(theme.textPrimary)
                     .textSelection(.enabled)
             }
         }
         .padding(12)
         .frame(minWidth: 200, maxWidth: 320, maxHeight: 280)
-        .background(Theme.panelBg)
+        .background(theme.panelBg)
     }
 }
 
 // MARK: - Grid View
 
 struct PromptGridView: View {
+    @EnvironmentObject var theme: ThemeManager
     let prompts: [Prompt]
     @ObservedObject var store: PromptStore
     @Binding var copiedPromptId: UUID?
@@ -167,6 +190,8 @@ struct PromptGridView: View {
     let onCopy: (Prompt) -> Void
 
     @State private var draggingPrompt: Prompt?
+    @State private var originalOrder: [UUID]?
+    @State private var dropFlag = DropFlag()
 
     private let columns = [
         GridItem(.adaptive(minimum: 100, maximum: 140), spacing: 6)
@@ -182,13 +207,25 @@ struct PromptGridView: View {
                         onCopy: { onCopy(prompt) },
                         onEdit: { onEdit(prompt) },
                         onDelete: { store.deletePrompt(id: prompt.id) },
-                        onDragStarted: { p in draggingPrompt = p },
-                        onDragEnded: { draggingPrompt = nil }
+                        onToggleStar: { store.toggleStar(id: prompt.id) },
+                        onDragStarted: { p in
+                            dropFlag.accepted = false
+                            originalOrder = store.prompts.map(\.id)
+                            draggingPrompt = p
+                        },
+                        onDragEnded: {
+                            if !dropFlag.accepted, let order = originalOrder {
+                                store.restoreOrder(order)
+                            }
+                            draggingPrompt = nil
+                            originalOrder = nil
+                        }
                     )
                     .onDrop(of: [.text], delegate: PromptDropDelegate(
                         targetPrompt: prompt,
                         store: store,
-                        draggingPrompt: $draggingPrompt
+                        draggingPrompt: $draggingPrompt,
+                        dropFlag: dropFlag
                     ))
                 }
             }
@@ -200,11 +237,13 @@ struct PromptGridView: View {
 // MARK: - Grid Item View
 
 struct PromptGridItemView: View {
+    @EnvironmentObject var theme: ThemeManager
     let prompt: Prompt
     let isCopied: Bool
     let onCopy: () -> Void
     let onEdit: () -> Void
     let onDelete: () -> Void
+    let onToggleStar: () -> Void
     let onDragStarted: (Prompt) -> Void
     let onDragEnded: () -> Void
 
@@ -221,14 +260,14 @@ struct PromptGridItemView: View {
             )
 
             VStack(spacing: 4) {
-                Image(systemName: "doc.text")
+                Image(systemName: prompt.isStarred ? "star.fill" : "doc.text")
                     .font(.system(size: 14))
-                    .foregroundStyle(Theme.textTertiary)
+                    .foregroundStyle(prompt.isStarred ? .yellow : theme.textTertiary)
                     .padding(.top, 4)
 
                 Text(prompt.title)
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(Theme.textPrimary)
+                    .foregroundStyle(theme.textPrimary)
                     .lineLimit(2)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity)
@@ -245,6 +284,15 @@ struct PromptGridItemView: View {
 
             VStack {
                 HStack {
+                    if isHovered {
+                        gridActionButton(
+                            icon: prompt.isStarred ? "star.fill" : "star",
+                            color: prompt.isStarred ? .yellow : nil,
+                            action: onToggleStar
+                        )
+                        .padding(3)
+                        .transition(.opacity.animation(.easeInOut(duration: 0.1)))
+                    }
                     Spacer()
                     if isHovered {
                         HStack(spacing: 1) {
@@ -261,11 +309,11 @@ struct PromptGridItemView: View {
         .frame(minHeight: 64)
         .background(
             RoundedRectangle(cornerRadius: 6)
-                .fill(isHovered ? Theme.surfaceBg : Theme.panelBg)
+                .fill(isHovered ? theme.surfaceBg : theme.panelBg)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 6)
-                .strokeBorder(isHovered ? Theme.textTertiary.opacity(0.3) : Theme.border, lineWidth: 1)
+                .strokeBorder(isHovered ? theme.textTertiary.opacity(0.3) : theme.border, lineWidth: 1)
         )
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.1)) {
@@ -284,13 +332,13 @@ struct PromptGridItemView: View {
         }
     }
 
-    private func gridActionButton(icon: String, color: Color = Theme.textTertiary, action: @escaping () -> Void) -> some View {
+    private func gridActionButton(icon: String, color: Color? = nil, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: icon)
                 .font(.system(size: 9))
-                .foregroundStyle(color)
+                .foregroundStyle(color ?? theme.textTertiary)
                 .frame(width: 18, height: 18)
-                .background(Theme.border)
+                .background(theme.border)
                 .clipShape(RoundedRectangle(cornerRadius: 3))
         }
         .buttonStyle(.plain)
@@ -300,36 +348,42 @@ struct PromptGridItemView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(prompt.title)
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(Theme.textPrimary)
+                .foregroundStyle(theme.textPrimary)
 
-            Rectangle().fill(Theme.border).frame(height: 1)
+            Rectangle().fill(theme.border).frame(height: 1)
 
             if let attributed = try? AttributedString(markdown: prompt.content) {
                 Text(attributed)
                     .font(.system(size: 12))
-                    .foregroundStyle(Theme.textPrimary)
+                    .foregroundStyle(theme.textPrimary)
                     .textSelection(.enabled)
             } else {
                 Text(prompt.content)
                     .font(.system(size: 12))
-                    .foregroundStyle(Theme.textPrimary)
+                    .foregroundStyle(theme.textPrimary)
                     .textSelection(.enabled)
             }
         }
         .padding(12)
         .frame(minWidth: 200, maxWidth: 320, maxHeight: 280)
-        .background(Theme.panelBg)
+        .background(theme.panelBg)
     }
 }
 
 // MARK: - Drop Delegate
 
+final class DropFlag {
+    var accepted = false
+}
+
 struct PromptDropDelegate: DropDelegate {
     let targetPrompt: Prompt
     @ObservedObject var store: PromptStore
     @Binding var draggingPrompt: Prompt?
+    let dropFlag: DropFlag
 
     func performDrop(info: DropInfo) -> Bool {
+        dropFlag.accepted = true
         draggingPrompt = nil
         return true
     }

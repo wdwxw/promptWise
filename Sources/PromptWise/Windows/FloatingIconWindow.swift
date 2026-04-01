@@ -3,6 +3,10 @@ import SwiftUI
 
 final class FloatingIconWindow: NSPanel {
     var onClick: (() -> Void)?
+    var onHoverChanged: ((Bool) -> Void)?
+    var onPositionChanged: (() -> Void)?
+    var onDragStarted: (() -> Void)?
+    var onDragEnded: (() -> Void)?
     private var isDragging = false
     private var dragStartLocation: NSPoint = .zero
     private var windowStartOrigin: NSPoint = .zero
@@ -15,16 +19,22 @@ final class FloatingIconWindow: NSPanel {
             defer: false
         )
 
-        self.level = .floating
+        self.level = .statusBar
         self.isOpaque = false
         self.backgroundColor = .clear
-        self.hasShadow = true
+        self.hasShadow = false
         self.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]
         self.hidesOnDeactivate = false
         self.animationBehavior = .utilityWindow
 
-        let hostingView = NSHostingView(rootView: FloatingIconContent())
+        let hostingView = NSHostingView(rootView: FloatingIconContent(
+            onHoverChanged: { [weak self] hovering in
+                self?.onHoverChanged?(hovering)
+            }
+        ))
         hostingView.frame = NSRect(x: 0, y: 0, width: 56, height: 56)
+        hostingView.wantsLayer = true
+        hostingView.layer?.backgroundColor = .clear
         self.contentView = hostingView
 
         positionAtDefaultLocation()
@@ -54,16 +64,20 @@ final class FloatingIconWindow: NSPanel {
             let dy = current.y - dragStartLocation.y
             if !isDragging && (abs(dx) > 2 || abs(dy) > 2) {
                 isDragging = true
+                onDragStarted?()
             }
             if isDragging {
                 self.setFrameOrigin(NSPoint(
                     x: windowStartOrigin.x + dx,
                     y: windowStartOrigin.y + dy
                 ))
+                onPositionChanged?()
             }
         case .leftMouseUp:
             if !isDragging {
                 onClick?()
+            } else {
+                onDragEnded?()
             }
             isDragging = false
         default:
@@ -75,6 +89,7 @@ final class FloatingIconWindow: NSPanel {
 // MARK: - SwiftUI Visual Content
 
 private struct FloatingIconContent: View {
+    var onHoverChanged: ((Bool) -> Void)?
     @State private var isHovered = false
 
     var body: some View {
@@ -101,6 +116,7 @@ private struct FloatingIconContent: View {
         .animation(.spring(response: 0.3), value: isHovered)
         .onHover { hovering in
             isHovered = hovering
+            onHoverChanged?(hovering)
             if hovering {
                 NSCursor.pointingHand.push()
             } else {

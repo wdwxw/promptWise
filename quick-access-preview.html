@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PromptWise 悬浮图标快捷按钮 Playground</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px;
+    color: #fff;
+  }
+
+  h1 { font-size: 24px; font-weight: 700; margin-bottom: 6px; }
+  .subtitle { color: rgba(255,255,255,0.7); font-size: 13px; margin-bottom: 8px; }
+  .instruction {
+    color: rgba(255,255,255,0.9); font-size: 13px; margin-bottom: 40px;
+    background: rgba(0,0,0,0.2); padding: 8px 16px; border-radius: 20px; font-weight: 500;
+  }
+
+  .demos-container {
+    display: flex;
+    gap: 60px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-bottom: 40px;
+  }
+
+  .demo-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .demo-label {
+    font-size: 15px; font-weight: 600; color: #fff;
+    background: rgba(0,0,0,0.25); padding: 6px 16px; border-radius: 8px;
+  }
+  .demo-desc {
+    font-size: 12px; color: rgba(255,255,255,0.65); text-align: center; max-width: 200px;
+    margin-bottom: 8px;
+  }
+
+  .demo-area {
+    position: relative;
+    width: 240px;
+    height: 520px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* Floating Icon */
+  .float-icon {
+    width: 50px; height: 50px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; color: white;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    z-index: 10;
+    position: relative;
+  }
+  .float-icon:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 24px rgba(0,0,0,0.4);
+  }
+
+  /* ============================== */
+  /* Style A: Pill Buttons (推荐)   */
+  /* ============================== */
+  .quick-list-a {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    opacity: 1;
+    transition: opacity 0.25s ease;
+  }
+
+  .quick-item-a {
+    background: rgba(30, 30, 30, 0.88);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    padding: 8px 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+    width: 200px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+  .quick-item-a:first-child {
+    margin-top: 4px;
+  }
+  .quick-item-a:hover {
+    background: rgba(124, 58, 237, 0.35);
+    border-color: rgba(124, 58, 237, 0.4);
+    transform: scale(1.02);
+  }
+  .quick-item-a .qi-icon {
+    font-size: 12px;
+    color: rgba(255,255,255,0.4);
+    flex-shrink: 0;
+  }
+  .quick-item-a .qi-title {
+    font-size: 12px;
+    color: rgba(255,255,255,0.85);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+  }
+  .quick-item-a .qi-copy {
+    font-size: 10px;
+    color: rgba(255,255,255,0.3);
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .quick-item-a:hover .qi-copy {
+    opacity: 1;
+    color: rgba(167, 139, 250, 0.9);
+  }
+
+  /* Connector line from icon to list */
+  .connector-a {
+    width: 2px;
+    height: 8px;
+    background: linear-gradient(180deg, rgba(139,92,246,0.6), rgba(139,92,246,0.1));
+    border-radius: 1px;
+  }
+
+  /* ============================== */
+  /* Style B: Compact Chips         */
+  /* ============================== */
+  .quick-list-b {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    opacity: 1;
+  }
+
+  .quick-item-b {
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-radius: 20px;
+    padding: 6px 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+    max-width: 180px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+  }
+  .quick-item-b:hover {
+    background: rgba(124, 58, 237, 0.5);
+    transform: translateX(4px);
+  }
+  .quick-item-b .qi-icon {
+    font-size: 10px;
+    color: rgba(255,255,255,0.35);
+    flex-shrink: 0;
+  }
+  .quick-item-b .qi-title {
+    font-size: 11px;
+    color: rgba(255,255,255,0.8);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+  }
+
+  /* ============================== */
+  /* Style C: Glass Card Stack      */
+  /* ============================== */
+  .quick-list-c {
+    margin-top: 10px;
+    background: rgba(28, 28, 36, 0.85);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px;
+    padding: 6px;
+    width: 210px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .quick-item-c {
+    padding: 7px 10px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: background 0.12s;
+  }
+  .quick-item-c:hover {
+    background: rgba(255,255,255,0.06);
+  }
+  .quick-item-c .qi-icon {
+    font-size: 11px;
+    color: rgba(255,255,255,0.3);
+    flex-shrink: 0;
+  }
+  .quick-item-c .qi-title {
+    font-size: 12px;
+    color: rgba(255,255,255,0.8);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+  }
+  .quick-item-c .qi-copy {
+    font-size: 9px;
+    color: rgba(255,255,255,0.2);
+    flex-shrink: 0;
+  }
+  .quick-item-c:hover .qi-copy {
+    color: rgba(167, 139, 250, 0.8);
+  }
+
+  .quick-list-c .qc-header {
+    padding: 6px 10px 4px;
+    font-size: 10px;
+    color: rgba(255,255,255,0.3);
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+
+  /* Arrow connector */
+  .connector-c {
+    width: 0; height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-bottom: 6px solid rgba(28, 28, 36, 0.85);
+    margin-top: 4px;
+  }
+
+  /* ============================== */
+  /* Footer                         */
+  /* ============================== */
+  .footer {
+    text-align: center;
+    margin-top: 20px;
+    padding: 20px;
+    color: rgba(255,255,255,0.6);
+    font-size: 12px;
+    line-height: 1.8;
+    max-width: 600px;
+  }
+  .footer strong { color: rgba(255,255,255,0.9); }
+
+  /* Animation keyframes for demo */
+  @keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .quick-list-a .quick-item-a,
+  .quick-list-b .quick-item-b {
+    animation: fadeSlideIn 0.2s ease backwards;
+  }
+  .quick-list-a .quick-item-a:nth-child(1) { animation-delay: 0.02s; }
+  .quick-list-a .quick-item-a:nth-child(2) { animation-delay: 0.04s; }
+  .quick-list-a .quick-item-a:nth-child(3) { animation-delay: 0.06s; }
+  .quick-list-a .quick-item-a:nth-child(4) { animation-delay: 0.08s; }
+  .quick-list-a .quick-item-a:nth-child(5) { animation-delay: 0.10s; }
+  .quick-list-a .quick-item-a:nth-child(6) { animation-delay: 0.12s; }
+  .quick-list-a .quick-item-a:nth-child(7) { animation-delay: 0.14s; }
+
+  .quick-list-b .quick-item-b:nth-child(1) { animation-delay: 0.02s; }
+  .quick-list-b .quick-item-b:nth-child(2) { animation-delay: 0.04s; }
+  .quick-list-b .quick-item-b:nth-child(3) { animation-delay: 0.06s; }
+  .quick-list-b .quick-item-b:nth-child(4) { animation-delay: 0.08s; }
+  .quick-list-b .quick-item-b:nth-child(5) { animation-delay: 0.10s; }
+  .quick-list-b .quick-item-b:nth-child(6) { animation-delay: 0.12s; }
+  .quick-list-b .quick-item-b:nth-child(7) { animation-delay: 0.14s; }
+
+  .quick-list-c {
+    animation: fadeSlideIn 0.25s ease backwards;
+    animation-delay: 0.05s;
+  }
+</style>
+</head>
+<body>
+
+<h1>悬浮图标快捷按钮</h1>
+<p class="subtitle">鼠标悬停自动展开，3 秒无操作自动收起</p>
+<p class="instruction">选择你喜欢的风格编号（A / B / C）告诉我</p>
+
+<div class="demos-container">
+
+  <!-- ===== Style A: Pill Buttons ===== -->
+  <div class="demo-block">
+    <div class="demo-label">A. 圆角卡片</div>
+    <div class="demo-desc">独立悬浮感，每条宽敞，hover 有紫色高亮</div>
+    <div class="demo-area">
+      <div class="float-icon">💬</div>
+      <div class="connector-a"></div>
+      <div class="quick-list-a">
+        <div class="quick-item-a">
+          <span class="qi-icon">📄</span>
+          <span class="qi-title">代码审查助手</span>
+          <span class="qi-copy">复制</span>
+        </div>
+        <div class="quick-item-a">
+          <span class="qi-icon">📄</span>
+          <span class="qi-title">英文润色专家</span>
+          <span class="qi-copy">复制</span>
+        </div>
+        <div class="quick-item-a">
+          <span class="qi-icon">📄</span>
+          <span class="qi-title">SQL 查询优化</span>
+          <span class="qi-copy">复制</span>
+        </div>
+        <div class="quick-item-a">
+          <span class="qi-icon">📄</span>
+          <span class="qi-title">周报总结生成器</span>
+          <span class="qi-copy">复制</span>
+        </div>
+        <div class="quick-item-a">
+          <span class="qi-icon">📄</span>
+          <span class="qi-title">产品需求分析</span>
+          <span class="qi-copy">复制</span>
+        </div>
+        <div class="quick-item-a">
+          <span class="qi-icon">📄</span>
+          <span class="qi-title">API 接口文档模板</span>
+          <span class="qi-copy">复制</span>
+        </div>
+        <div class="quick-item-a">
+          <span class="qi-icon">📄</span>
+          <span class="qi-title">中英互译助手</span>
+          <span class="qi-copy">复制</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Style B: Compact Chips ===== -->
+  <div class="demo-block">
+    <div class="demo-label">B. 紧凑胶囊</div>
+    <div class="demo-desc">小巧不占空间，hover 向右微移，适合密集排列</div>
+    <div class="demo-area">
+      <div class="float-icon">💬</div>
+      <div class="quick-list-b">
+        <div class="quick-item-b">
+          <span class="qi-icon">📄</span>
+          <span class="qi-title">代码审查助手</span>
+        </div>
+        <div class="quick-item-b">
+          <span class="qi-icon">📄</span>
+          <span class="qi-title">英文润色专家</span>
+        </div>
+        <div class="quick-item-b">
+          <span class="qi-icon">📄</span>
+          <span class="qi-title">SQL 查询优化</span>
+        </div>
+        <div class="quick-item-b">
+          <span class="qi-icon">📄</span>
+          <span class="qi-title">周报总结生成器</span>
+        </div>
+        <div class="quick-item-b">
+          <span class="qi-icon">📄</span>
+          <span class="qi-title">产品需求分析</span>
+        </div>
+        <div class="quick-item-b">
+          <span class="qi-icon">📄</span>
+          <span class="qi-title">API 接口文档模板</span>
+        </div>
+        <div class="quick-item-b">
+          <span class="qi-icon">📄</span>
+          <span class="qi-title">中英互译助手</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Style C: Glass Card ===== -->
+  <div class="demo-block">
+    <div class="demo-label">C. 毛玻璃面板</div>
+    <div class="demo-desc">整体感强，类似弹出菜单，有小箭头指向图标</div>
+    <div class="demo-area">
+      <div class="float-icon">💬</div>
+      <div class="connector-c"></div>
+      <div class="quick-list-c">
+        <div class="qc-header">最近使用</div>
+        <div class="quick-item-c">
+          <span class="qi-icon">📄</span>
+          <span class="qi-title">代码审查助手</span>
+          <span class="qi-copy">⌘C</span>
+        </div>
+        <div class="quick-item-c">
+          <span class="qi-icon">📄</span>
+          <span class="qi-title">英文润色专家</span>
+          <span class="qi-copy">⌘C</span>
+        </div>
+        <div class="quick-item-c">
+          <span class="qi-icon">📄</span>
+          <span class="qi-title">SQL 查询优化</span>
+          <span class="qi-copy">⌘C</span>
+        </div>
+        <div class="quick-item-c">
+          <span class="qi-icon">📄</span>
+          <span class="qi-title">周报总结生成器</span>
+          <span class="qi-copy">⌘C</span>
+        </div>
+        <div class="quick-item-c">
+          <span class="qi-icon">📄</span>
+          <span class="qi-title">产品需求分析</span>
+          <span class="qi-copy">⌘C</span>
+        </div>
+        <div class="quick-item-c">
+          <span class="qi-icon">📄</span>
+          <span class="qi-title">API 接口文档模板</span>
+          <span class="qi-copy">⌘C</span>
+        </div>
+        <div class="quick-item-c">
+          <span class="qi-icon">📄</span>
+          <span class="qi-title">中英互译助手</span>
+          <span class="qi-copy">⌘C</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  <strong>交互逻辑</strong>：鼠标悬停在悬浮图标上 → 下方展开最近 10 条提示语快捷按钮 → 点击按钮直接复制到剪贴板<br>
+  3 秒内没有任何操作（点击/拖拽）→ 自动收起<br><br>
+  <strong>选择方式</strong>：告诉我方案编号（A / B / C），我来实现 Swift 代码。也可以提混搭意见。
+</div>
+
+</body>
+</html>

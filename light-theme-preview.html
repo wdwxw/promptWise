@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PromptWise 浅色主题方案 Playground</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif;
+    background: #f0f0f5;
+    color: #333;
+    min-height: 100vh;
+    padding: 40px 24px;
+  }
+
+  h1 {
+    text-align: center;
+    font-size: 26px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    color: #222;
+  }
+  .subtitle {
+    text-align: center;
+    color: #888;
+    font-size: 14px;
+    margin-bottom: 12px;
+  }
+  .instruction {
+    text-align: center;
+    color: #7c3aed;
+    font-size: 13px;
+    margin-bottom: 40px;
+    font-weight: 500;
+  }
+
+  /* Current dark theme reference */
+  .ref-section {
+    max-width: 1200px;
+    margin: 0 auto 48px;
+  }
+  .section-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #ddd;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #333;
+  }
+  .section-title .badge {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: #eee;
+    color: #666;
+    font-weight: 500;
+  }
+
+  .designs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    gap: 28px;
+    max-width: 1200px;
+    margin: 0 auto 48px;
+  }
+
+  .design-card {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 16px;
+    overflow: hidden;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .design-card:hover {
+    border-color: #7c3aed;
+    box-shadow: 0 8px 24px rgba(124,58,237,0.08);
+  }
+
+  .design-label {
+    padding: 14px 18px;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #fafafa;
+  }
+  .design-label h3 {
+    font-size: 15px;
+    font-weight: 600;
+    color: #333;
+  }
+  .design-label .desc {
+    font-size: 12px;
+    color: #888;
+    margin-top: 2px;
+  }
+  .design-label .tag {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .tag-a { background: #f3f0ff; color: #7c3aed; }
+  .tag-b { background: #fef3c7; color: #b45309; }
+  .tag-c { background: #dbeafe; color: #2563eb; }
+  .tag-d { background: #dcfce7; color: #16a34a; }
+
+  .design-preview {
+    padding: 24px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 480px;
+  }
+
+  /* Dark background for reference panel */
+  .preview-dark { background: #1a1a1a; }
+  /* Light backgrounds for light theme panels */
+  .preview-light-a { background: #e8e8ed; }
+  .preview-light-b { background: #e8e4df; }
+  .preview-light-c { background: #e0e8f0; }
+  .preview-light-d { background: #e6ebe4; }
+
+  /* ============================================ */
+  /* REFERENCE: Current Dark Theme                */
+  /* ============================================ */
+  .panel-ref {
+    width: 320px;
+    background: #1e1e1e;
+    border-radius: 10px;
+    border: 1px solid #2a2a2a;
+    overflow: hidden;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+    color: #bbb;
+  }
+  .panel-ref .header {
+    padding: 10px 14px;
+    display: flex; align-items: center; gap: 8px;
+    border-bottom: 1px solid #2a2a2a;
+  }
+  .panel-ref .header h2 { font-size: 13px; font-weight: 500; flex: 1; color: #999; }
+  .panel-ref .btn-sm {
+    font-size: 11px; color: #555; padding: 4px 8px; border-radius: 4px;
+    background: #252525; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
+  }
+  .panel-ref .close-btn {
+    width: 20px; height: 20px; border-radius: 4px; background: #252525;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; color: #555; cursor: pointer;
+  }
+  .panel-ref .cats {
+    padding: 8px 14px;
+    display: flex; gap: 6px; overflow: hidden;
+  }
+  .cat-chip {
+    padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 500;
+    cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 4px;
+  }
+  .panel-ref .cat-chip.active { background: rgba(124,58,237,0.12); color: #a78bfa; }
+  .panel-ref .cat-chip.inactive { color: #555; }
+  .panel-ref .search-bar {
+    margin: 0 14px 8px; padding: 6px 10px; background: #252525;
+    border-radius: 6px; display: flex; align-items: center; gap: 6px;
+    border: 1px solid #2a2a2a; font-size: 12px; color: #555;
+  }
+  .panel-ref .divider { height: 1px; background: #2a2a2a; }
+  .panel-ref .list { padding: 4px 6px 8px; }
+  .panel-ref .item {
+    padding: 6px 10px; border-radius: 6px;
+    display: flex; align-items: center; gap: 8px;
+    cursor: pointer; transition: background 0.12s; margin-bottom: 1px;
+  }
+  .panel-ref .item:hover { background: #252525; }
+  .panel-ref .item .icon { font-size: 12px; color: #555; }
+  .panel-ref .item .title { font-size: 13px; color: #bbb; flex: 1; }
+  .panel-ref .item .actions { display: flex; gap: 2px; opacity: 0; transition: opacity 0.15s; }
+  .panel-ref .item:hover .actions { opacity: 1; }
+  .panel-ref .item .act-btn {
+    width: 22px; height: 22px; border-radius: 4px; background: #2a2a2a;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; color: #555; cursor: pointer;
+  }
+  .panel-ref .item .copied {
+    font-size: 10px; font-weight: 500; color: rgba(74,222,128,0.8);
+    padding: 2px 6px; background: rgba(74,222,128,0.1); border-radius: 3px;
+  }
+
+  /* ============================================ */
+  /* SCHEME A: Pure White · 纯白简洁              */
+  /* ============================================ */
+  .panel-a {
+    width: 320px;
+    background: #ffffff;
+    border-radius: 10px;
+    border: 1px solid #e5e5e5;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.06);
+    color: #333;
+  }
+  .panel-a .header {
+    padding: 10px 14px;
+    display: flex; align-items: center; gap: 8px;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .panel-a .header h2 { font-size: 13px; font-weight: 500; flex: 1; color: #666; }
+  .panel-a .btn-sm {
+    font-size: 11px; color: #999; padding: 4px 8px; border-radius: 4px;
+    background: #f5f5f5; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
+  }
+  .panel-a .btn-sm:hover { background: #eee; color: #666; }
+  .panel-a .close-btn {
+    width: 20px; height: 20px; border-radius: 4px; background: #f5f5f5;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; color: #999; cursor: pointer;
+  }
+  .panel-a .cats {
+    padding: 8px 14px;
+    display: flex; gap: 6px;
+  }
+  .panel-a .cat-chip.active { background: rgba(124,58,237,0.08); color: #7c3aed; }
+  .panel-a .cat-chip.inactive { color: #aaa; }
+  .panel-a .cat-chip.inactive:hover { color: #666; background: #f8f8f8; }
+  .panel-a .search-bar {
+    margin: 0 14px 8px; padding: 6px 10px; background: #f8f8f8;
+    border-radius: 6px; display: flex; align-items: center; gap: 6px;
+    border: 1px solid #eeeeee; font-size: 12px; color: #bbb;
+  }
+  .panel-a .divider { height: 1px; background: #f0f0f0; }
+  .panel-a .list { padding: 4px 6px 8px; }
+  .panel-a .item {
+    padding: 6px 10px; border-radius: 6px;
+    display: flex; align-items: center; gap: 8px;
+    cursor: pointer; transition: background 0.12s; margin-bottom: 1px;
+  }
+  .panel-a .item:hover { background: #f8f8fa; }
+  .panel-a .item .icon { font-size: 12px; color: #ccc; }
+  .panel-a .item .title { font-size: 13px; color: #444; flex: 1; }
+  .panel-a .item .actions { display: flex; gap: 2px; opacity: 0; transition: opacity 0.15s; }
+  .panel-a .item:hover .actions { opacity: 1; }
+  .panel-a .item .act-btn {
+    width: 22px; height: 22px; border-radius: 4px; background: #f0f0f0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; color: #999; cursor: pointer;
+  }
+  .panel-a .item .act-btn:hover { background: #e8e8e8; color: #666; }
+  .panel-a .item .copied {
+    font-size: 10px; font-weight: 500; color: rgba(22,163,74,0.85);
+    padding: 2px 6px; background: rgba(22,163,74,0.08); border-radius: 3px;
+  }
+
+  /* ============================================ */
+  /* SCHEME B: Warm Ivory · 暖调米白               */
+  /* ============================================ */
+  .panel-b {
+    width: 320px;
+    background: #faf8f5;
+    border-radius: 10px;
+    border: 1px solid #e8e4de;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(120,100,60,0.06), 0 1px 3px rgba(0,0,0,0.04);
+    color: #4a4540;
+  }
+  .panel-b .header {
+    padding: 10px 14px;
+    display: flex; align-items: center; gap: 8px;
+    border-bottom: 1px solid #efe9e1;
+  }
+  .panel-b .header h2 { font-size: 13px; font-weight: 500; flex: 1; color: #8a8078; }
+  .panel-b .btn-sm {
+    font-size: 11px; color: #a09488; padding: 4px 8px; border-radius: 4px;
+    background: #f2ede6; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
+  }
+  .panel-b .btn-sm:hover { background: #e8e0d6; color: #6a5f55; }
+  .panel-b .close-btn {
+    width: 20px; height: 20px; border-radius: 4px; background: #f2ede6;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; color: #a09488; cursor: pointer;
+  }
+  .panel-b .cats {
+    padding: 8px 14px;
+    display: flex; gap: 6px;
+  }
+  .panel-b .cat-chip.active { background: rgba(124,58,237,0.08); color: #8b5cf6; }
+  .panel-b .cat-chip.inactive { color: #b0a898; }
+  .panel-b .cat-chip.inactive:hover { color: #7a7068; background: #f2ede6; }
+  .panel-b .search-bar {
+    margin: 0 14px 8px; padding: 6px 10px; background: #f5f0ea;
+    border-radius: 6px; display: flex; align-items: center; gap: 6px;
+    border: 1px solid #e8e2da; font-size: 12px; color: #c0b8ae;
+  }
+  .panel-b .divider { height: 1px; background: #efe9e1; }
+  .panel-b .list { padding: 4px 6px 8px; }
+  .panel-b .item {
+    padding: 6px 10px; border-radius: 6px;
+    display: flex; align-items: center; gap: 8px;
+    cursor: pointer; transition: background 0.12s; margin-bottom: 1px;
+  }
+  .panel-b .item:hover { background: #f5f0ea; }
+  .panel-b .item .icon { font-size: 12px; color: #c8c0b5; }
+  .panel-b .item .title { font-size: 13px; color: #5a524a; flex: 1; }
+  .panel-b .item .actions { display: flex; gap: 2px; opacity: 0; transition: opacity 0.15s; }
+  .panel-b .item:hover .actions { opacity: 1; }
+  .panel-b .item .act-btn {
+    width: 22px; height: 22px; border-radius: 4px; background: #ece5dc;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; color: #a09488; cursor: pointer;
+  }
+  .panel-b .item .act-btn:hover { background: #e0d8cc; color: #6a5f55; }
+  .panel-b .item .copied {
+    font-size: 10px; font-weight: 500; color: rgba(22,163,74,0.85);
+    padding: 2px 6px; background: rgba(22,163,74,0.08); border-radius: 3px;
+  }
+
+  /* ============================================ */
+  /* SCHEME C: Cool Blue · 蓝白清爽               */
+  /* ============================================ */
+  .panel-c {
+    width: 320px;
+    background: #f8fafc;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(30,64,120,0.06), 0 1px 3px rgba(0,0,0,0.04);
+    color: #334155;
+  }
+  .panel-c .header {
+    padding: 10px 14px;
+    display: flex; align-items: center; gap: 8px;
+    border-bottom: 1px solid #edf2f7;
+  }
+  .panel-c .header h2 { font-size: 13px; font-weight: 500; flex: 1; color: #64748b; }
+  .panel-c .btn-sm {
+    font-size: 11px; color: #94a3b8; padding: 4px 8px; border-radius: 4px;
+    background: #f1f5f9; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
+  }
+  .panel-c .btn-sm:hover { background: #e2e8f0; color: #64748b; }
+  .panel-c .close-btn {
+    width: 20px; height: 20px; border-radius: 4px; background: #f1f5f9;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; color: #94a3b8; cursor: pointer;
+  }
+  .panel-c .cats {
+    padding: 8px 14px;
+    display: flex; gap: 6px;
+  }
+  .panel-c .cat-chip.active { background: rgba(124,58,237,0.08); color: #7c3aed; }
+  .panel-c .cat-chip.inactive { color: #94a3b8; }
+  .panel-c .cat-chip.inactive:hover { color: #64748b; background: #f1f5f9; }
+  .panel-c .search-bar {
+    margin: 0 14px 8px; padding: 6px 10px; background: #f1f5f9;
+    border-radius: 6px; display: flex; align-items: center; gap: 6px;
+    border: 1px solid #e2e8f0; font-size: 12px; color: #94a3b8;
+  }
+  .panel-c .divider { height: 1px; background: #edf2f7; }
+  .panel-c .list { padding: 4px 6px 8px; }
+  .panel-c .item {
+    padding: 6px 10px; border-radius: 6px;
+    display: flex; align-items: center; gap: 8px;
+    cursor: pointer; transition: background 0.12s; margin-bottom: 1px;
+  }
+  .panel-c .item:hover { background: #f1f5f9; }
+  .panel-c .item .icon { font-size: 12px; color: #cbd5e1; }
+  .panel-c .item .title { font-size: 13px; color: #475569; flex: 1; }
+  .panel-c .item .actions { display: flex; gap: 2px; opacity: 0; transition: opacity 0.15s; }
+  .panel-c .item:hover .actions { opacity: 1; }
+  .panel-c .item .act-btn {
+    width: 22px; height: 22px; border-radius: 4px; background: #e2e8f0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; color: #94a3b8; cursor: pointer;
+  }
+  .panel-c .item .act-btn:hover { background: #cbd5e1; color: #64748b; }
+  .panel-c .item .copied {
+    font-size: 10px; font-weight: 500; color: rgba(22,163,74,0.85);
+    padding: 2px 6px; background: rgba(22,163,74,0.08); border-radius: 3px;
+  }
+
+  /* ============================================ */
+  /* SCHEME D: Soft Sage · 柔和灰绿               */
+  /* ============================================ */
+  .panel-d {
+    width: 320px;
+    background: #f6f8f5;
+    border-radius: 10px;
+    border: 1px solid #dfe5db;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(60,90,50,0.05), 0 1px 3px rgba(0,0,0,0.04);
+    color: #3a4a38;
+  }
+  .panel-d .header {
+    padding: 10px 14px;
+    display: flex; align-items: center; gap: 8px;
+    border-bottom: 1px solid #eaefe7;
+  }
+  .panel-d .header h2 { font-size: 13px; font-weight: 500; flex: 1; color: #6a7a68; }
+  .panel-d .btn-sm {
+    font-size: 11px; color: #8a9a88; padding: 4px 8px; border-radius: 4px;
+    background: #eef2ec; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
+  }
+  .panel-d .btn-sm:hover { background: #dfe5db; color: #5a6a58; }
+  .panel-d .close-btn {
+    width: 20px; height: 20px; border-radius: 4px; background: #eef2ec;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; color: #8a9a88; cursor: pointer;
+  }
+  .panel-d .cats {
+    padding: 8px 14px;
+    display: flex; gap: 6px;
+  }
+  .panel-d .cat-chip.active { background: rgba(124,58,237,0.08); color: #7c3aed; }
+  .panel-d .cat-chip.inactive { color: #9aaa98; }
+  .panel-d .cat-chip.inactive:hover { color: #6a7a68; background: #eef2ec; }
+  .panel-d .search-bar {
+    margin: 0 14px 8px; padding: 6px 10px; background: #eff3ed;
+    border-radius: 6px; display: flex; align-items: center; gap: 6px;
+    border: 1px solid #dfe5db; font-size: 12px; color: #9aaa98;
+  }
+  .panel-d .divider { height: 1px; background: #eaefe7; }
+  .panel-d .list { padding: 4px 6px 8px; }
+  .panel-d .item {
+    padding: 6px 10px; border-radius: 6px;
+    display: flex; align-items: center; gap: 8px;
+    cursor: pointer; transition: background 0.12s; margin-bottom: 1px;
+  }
+  .panel-d .item:hover { background: #eff3ed; }
+  .panel-d .item .icon { font-size: 12px; color: #bccaba; }
+  .panel-d .item .title { font-size: 13px; color: #4a5a48; flex: 1; }
+  .panel-d .item .actions { display: flex; gap: 2px; opacity: 0; transition: opacity 0.15s; }
+  .panel-d .item:hover .actions { opacity: 1; }
+  .panel-d .item .act-btn {
+    width: 22px; height: 22px; border-radius: 4px; background: #dfe5db;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; color: #8a9a88; cursor: pointer;
+  }
+  .panel-d .item .act-btn:hover { background: #d0d8cc; color: #5a6a58; }
+  .panel-d .item .copied {
+    font-size: 10px; font-weight: 500; color: rgba(22,163,74,0.85);
+    padding: 2px 6px; background: rgba(22,163,74,0.08); border-radius: 3px;
+  }
+
+  /* ============================================ */
+  /* Color Palette Display                        */
+  /* ============================================ */
+  .palette-row {
+    display: flex;
+    gap: 4px;
+    margin-top: 8px;
+    padding: 0 18px 12px;
+  }
+  .palette-swatch {
+    flex: 1;
+    height: 24px;
+    border-radius: 4px;
+    position: relative;
+  }
+  .palette-swatch::after {
+    content: attr(data-label);
+    position: absolute;
+    bottom: -16px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 8px;
+    color: #999;
+    white-space: nowrap;
+  }
+
+  .footer {
+    text-align: center;
+    padding: 40px 0 20px;
+    color: #999;
+    font-size: 12px;
+    max-width: 600px;
+    margin: 0 auto;
+    line-height: 1.8;
+  }
+  .footer strong { color: #7c3aed; }
+</style>
+</head>
+<body>
+
+<h1>PromptWise 浅色主题方案</h1>
+<p class="subtitle">4 个浅色变体 + 当前深色参考，完全保留面板布局与交互结构</p>
+<p class="instruction">在浏览器中打开此文件 → 选择你喜欢的方案编号（A / B / C / D）告诉我</p>
+
+<!-- ========== REFERENCE ========== -->
+<div class="section-title" style="max-width:1200px;margin:0 auto 20px;">
+  🌙 当前深色主题（参考对照）
+  <span class="badge">现有</span>
+</div>
+
+<div style="max-width:1200px;margin:0 auto 48px;display:flex;justify-content:center;">
+  <div style="background:#1a1a1a;padding:24px;border-radius:16px;border:1px solid #e0e0e0;">
+    <div class="panel-ref">
+      <div class="header">
+        <span style="font-size:14px">⚡</span>
+        <h2>提示语</h2>
+        <span class="btn-sm">＋ 新建</span>
+        <span class="btn-sm">⚙</span>
+        <div class="close-btn">✕</div>
+      </div>
+      <div class="cats">
+        <span class="cat-chip active">📁 全部</span>
+        <span class="cat-chip inactive">💻 编程</span>
+        <span class="cat-chip inactive">✍️ 写作</span>
+        <span class="cat-chip inactive">🌐 翻译</span>
+      </div>
+      <div class="search-bar">
+        <span>🔍</span>
+        <span>搜索...</span>
+        <span style="margin-left:auto;display:flex;gap:2px;">
+          <span style="opacity:0.4">☰</span>
+          <span style="opacity:0.4">⊞</span>
+        </span>
+      </div>
+      <div class="divider"></div>
+      <div class="list">
+        <div class="item">
+          <span class="icon">📄</span>
+          <span class="title">代码审查助手</span>
+          <div class="actions"><div class="act-btn">✏</div><div class="act-btn">🗑</div></div>
+        </div>
+        <div class="item">
+          <span class="icon">📄</span>
+          <span class="title">英文润色专家</span>
+          <span class="copied">已复制</span>
+        </div>
+        <div class="item">
+          <span class="icon">📄</span>
+          <span class="title">SQL 查询优化</span>
+          <div class="actions"><div class="act-btn">✏</div><div class="act-btn">🗑</div></div>
+        </div>
+        <div class="item">
+          <span class="icon">📄</span>
+          <span class="title">周报总结生成器</span>
+          <div class="actions"><div class="act-btn">✏</div><div class="act-btn">🗑</div></div>
+        </div>
+        <div class="item">
+          <span class="icon">📄</span>
+          <span class="title">产品需求分析</span>
+          <div class="actions"><div class="act-btn">✏</div><div class="act-btn">🗑</div></div>
+        </div>
+        <div class="item">
+          <span class="icon">📄</span>
+          <span class="title">API 接口文档模板</span>
+          <div class="actions"><div class="act-btn">✏</div><div class="act-btn">🗑</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== LIGHT THEMES ========== -->
+<div class="section-title" style="max-width:1200px;margin:0 auto 20px;">
+  ☀️ 浅色主题方案
+  <span class="badge">4 个方案</span>
+</div>
+
+<div class="designs-grid">
+
+  <!-- ===== Scheme A: Pure White ===== -->
+  <div class="design-card">
+    <div class="design-label">
+      <div>
+        <h3>A. 纯白简洁</h3>
+        <div class="desc">干净利落，macOS 原生感，高对比可读性</div>
+      </div>
+      <span class="tag tag-a">经典</span>
+    </div>
+    <div class="design-preview preview-light-a">
+      <div class="panel-a">
+        <div class="header">
+          <span style="font-size:14px">⚡</span>
+          <h2>提示语</h2>
+          <span class="btn-sm">＋ 新建</span>
+          <span class="btn-sm">⚙</span>
+          <div class="close-btn">✕</div>
+        </div>
+        <div class="cats">
+          <span class="cat-chip active">📁 全部</span>
+          <span class="cat-chip inactive">💻 编程</span>
+          <span class="cat-chip inactive">✍️ 写作</span>
+          <span class="cat-chip inactive">🌐 翻译</span>
+        </div>
+        <div class="search-bar">
+          <span>🔍</span>
+          <span>搜索...</span>
+          <span style="margin-left:auto;display:flex;gap:2px;">
+            <span style="opacity:0.4">☰</span>
+            <span style="opacity:0.4">⊞</span>
+          </span>
+        </div>
+        <div class="divider"></div>
+        <div class="list">
+          <div class="item">
+            <span class="icon">📄</span>
+            <span class="title">代码审查助手</span>
+            <div class="actions"><div class="act-btn">✏</div><div class="act-btn">🗑</div></div>
+          </div>
+          <div class="item">
+            <span class="icon">📄</span>
+            <span class="title">英文润色专家</span>
+            <span class="copied">已复制</span>
+          </div>
+          <div class="item">
+            <span class="icon">📄</span>
+            <span class="title">SQL 查询优化</span>
+            <div class="actions"><div class="act-btn">✏</div><div class="act-btn">🗑</div></div>
+          </div>
+          <div class="item">
+            <span class="icon">📄</span>
+            <span class="title">周报总结生成器</span>
+            <div class="actions"><div class="act-btn">✏</div><div class="act-btn">🗑</div></div>
+          </div>
+          <div class="item">
+            <span class="icon">📄</span>
+            <span class="title">产品需求分析</span>
+            <div class="actions"><div class="act-btn">✏</div><div class="act-btn">🗑</div></div>
+          </div>
+          <div class="item">
+            <span class="icon">📄</span>
+            <span class="title">API 接口文档模板</span>
+            <div class="actions"><div class="act-btn">✏</div><div class="act-btn">🗑</div></div>
+          </div>
+        </div>
+        <div class="palette-row">
+          <div class="palette-swatch" style="background:#ffffff" data-label="面板"></div>
+          <div class="palette-swatch" style="background:#f8f8f8" data-label="表面"></div>
+          <div class="palette-swatch" style="background:#f0f0f0" data-label="边框"></div>
+          <div class="palette-swatch" style="background:#444" data-label="主文字"></div>
+          <div class="palette-swatch" style="background:#999" data-label="副文字"></div>
+          <div class="palette-swatch" style="background:#7c3aed" data-label="强调"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Scheme B: Warm Ivory ===== -->
+  <div class="design-card">
+    <div class="design-label">
+      <div>
+        <h3>B. 暖调米白</h3>
+        <div class="desc">偏暖色调，柔和护眼，优雅温润感</div>
+      </div>
+      <span class="tag tag-b">温暖</span>
+    </div>
+    <div class="design-preview preview-light-b">
+      <div class="panel-b">
+        <div class="header">
+          <span style="font-size:14px">⚡</span>
+          <h2>提示语</h2>
+          <span class="btn-sm">＋ 新建</span>
+          <span class="btn-sm">⚙</span>
+          <div class="close-btn">✕</div>
+        </div>
+        <div class="cats">
+          <span class="cat-chip active">📁 全部</span>
+          <span class="cat-chip inactive">💻 编程</span>
+          <span class="cat-chip inactive">✍️ 写作</span>
+          <span class="cat-chip inactive">🌐 翻译</span>
+        </div>
+        <div class="search-bar">
+          <span>🔍</span>
+          <span>搜索...</span>
+          <span style="margin-left:auto;display:flex;gap:2px;">
+            <span style="opacity:0.4">☰</span>
+            <span style="opacity:0.4">⊞</span>
+          </span>
+        </div>
+        <div class="divider"></div>
+        <div class="list">
+          <div class="item">
+            <span class="icon">📄</span>
+            <span class="title">代码审查助手</span>
+            <div class="actions"><div class="act-btn">✏</div><div class="act-btn">🗑</div></div>
+          </div>
+          <div class="item">
+            <span class="icon">📄</span>
+            <span class="title">英文润色专家</span>
+            <span class="copied">已复制</span>
+          </div>
+          <div class="item">
+            <span class="icon">📄</span>
+            <span class="title">SQL 查询优化</span>
+            <div class="actions"><div class="act-btn">✏</div><div class="act-btn">🗑</div></div>
+          </div>
+          <div class="item">
+            <span class="icon">📄</span>
+            <span class="title">周报总结生成器</span>
+            <div class="actions"><div class="act-btn">✏</div><div class="act-btn">🗑</div></div>
+          </div>
+          <div class="item">
+            <span class="icon">📄</span>
+            <span class="title">产品需求分析</span>
+            <div class="actions"><div class="act-btn">✏</div><div class="act-btn">🗑</div></div>
+          </div>
+          <div class="item">
+            <span class="icon">📄</span>
+            <span class="title">API 接口文档模板</span>
+            <div class="actions"><div class="act-btn">✏</div><div class="act-btn">🗑</div></div>
+          </div>
+        </div>
+        <div class="palette-row">
+          <div class="palette-swatch" style="background:#faf8f5" data-label="面板"></div>
+          <div class="palette-swatch" style="background:#f5f0ea" data-label="表面"></div>
+          <div class="palette-swatch" style="background:#e8e4de" data-label="边框"></div>
+          <div class="palette-swatch" style="background:#5a524a" data-label="主文字"></div>
+          <div class="palette-swatch" style="background:#a09488" data-label="副文字"></div>
+          <div class="palette-swatch" style="background:#8b5cf6" data-label="强调"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Scheme C: Cool Blue ===== -->
+  <div class="design-card">
+    <div class="design-label">
+      <div>
+        <h3>C. 蓝白清爽</h3>
+        <div class="desc">冷色调蓝灰，专业高效，Tailwind 色板风格</div>
+      </div>
+      <span class="tag tag-c">清爽</span>
+    </div>
+    <div class="design-preview preview-light-c">
+      <div class="panel-c">
+        <div class="header">
+          <span style="font-size:14px">⚡</span>
+          <h2>提示语</h2>
+          <span class="btn-sm">＋ 新建</span>
+          <span class="btn-sm">⚙</span>
+          <div class="close-btn">✕</div>
+        </div>
+        <div class="cats">
+          <span class="cat-chip active">📁 全部</span>
+          <span class="cat-chip inactive">💻 编程</span>
+          <span class="cat-chip inactive">✍️ 写作</span>
+          <span class="cat-chip inactive">🌐 翻译</span>
+        </div>
+        <div class="search-bar">
+          <span>🔍</span>
+          <span>搜索...</span>
+          <span style="margin-left:auto;display:flex;gap:2px;">
+            <span style="opacity:0.4">☰</span>
+            <span style="opacity:0.4">⊞</span>
+          </span>
+        </div>
+        <div class="divider"></div>
+        <div class="list">
+          <div class="item">
+            <span class="icon">📄</span>
+            <span class="title">代码审查助手</span>
+            <div class="actions"><div class="act-btn">✏</div><div class="act-btn">🗑</div></div>
+          </div>
+          <div class="item">
+            <span class="icon">📄</span>
+            <span class="title">英文润色专家</span>
+            <span class="copied">已复制</span>
+          </div>
+          <div class="item">
+            <span class="icon">📄</span>
+            <span class="title">SQL 查询优化</span>
+            <div class="actions"><div class="act-btn">✏</div><div class="act-btn">🗑</div></div>
+          </div>
+          <div class="item">
+            <span class="icon">📄</span>
+            <span class="title">周报总结生成器</span>
+            <div class="actions"><div class="act-btn">✏</div><div class="act-btn">🗑</div></div>
+          </div>
+          <div class="item">
+            <span class="icon">📄</span>
+            <span class="title">产品需求分析</span>
+            <div class="actions"><div class="act-btn">✏</div><div class="act-btn">🗑</div></div>
+          </div>
+          <div class="item">
+            <span class="icon">📄</span>
+            <span class="title">API 接口文档模板</span>
+            <div class="actions"><div class="act-btn">✏</div><div class="act-btn">🗑</div></div>
+          </div>
+        </div>
+        <div class="palette-row">
+          <div class="palette-swatch" style="background:#f8fafc" data-label="面板"></div>
+          <div class="palette-swatch" style="background:#f1f5f9" data-label="表面"></div>
+          <div class="palette-swatch" style="background:#e2e8f0" data-label="边框"></div>
+          <div class="palette-swatch" style="background:#475569" data-label="主文字"></div>
+          <div class="palette-swatch" style="background:#94a3b8" data-label="副文字"></div>
+          <div class="palette-swatch" style="background:#7c3aed" data-label="强调"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Scheme D: Soft Sage ===== -->
+  <div class="design-card">
+    <div class="design-label">
+      <div>
+        <h3>D. 柔和灰绿</h3>
+        <div class="desc">自然灰绿调，低饱和度，舒适沉静</div>
+      </div>
+      <span class="tag tag-d">自然</span>
+    </div>
+    <div class="design-preview preview-light-d">
+      <div class="panel-d">
+        <div class="header">
+          <span style="font-size:14px">⚡</span>
+          <h2>提示语</h2>
+          <span class="btn-sm">＋ 新建</span>
+          <span class="btn-sm">⚙</span>
+          <div class="close-btn">✕</div>
+        </div>
+        <div class="cats">
+          <span class="cat-chip active">📁 全部</span>
+          <span class="cat-chip inactive">💻 编程</span>
+          <span class="cat-chip inactive">✍️ 写作</span>
+          <span class="cat-chip inactive">🌐 翻译</span>
+        </div>
+        <div class="search-bar">
+          <span>🔍</span>
+          <span>搜索...</span>
+          <span style="margin-left:auto;display:flex;gap:2px;">
+            <span style="opacity:0.4">☰</span>
+            <span style="opacity:0.4">⊞</span>
+          </span>
+        </div>
+        <div class="divider"></div>
+        <div class="list">
+          <div class="item">
+            <span class="icon">📄</span>
+            <span class="title">代码审查助手</span>
+            <div class="actions"><div class="act-btn">✏</div><div class="act-btn">🗑</div></div>
+          </div>
+          <div class="item">
+            <span class="icon">📄</span>
+            <span class="title">英文润色专家</span>
+            <span class="copied">已复制</span>
+          </div>
+          <div class="item">
+            <span class="icon">📄</span>
+            <span class="title">SQL 查询优化</span>
+            <div class="actions"><div class="act-btn">✏</div><div class="act-btn">🗑</div></div>
+          </div>
+          <div class="item">
+            <span class="icon">📄</span>
+            <span class="title">周报总结生成器</span>
+            <div class="actions"><div class="act-btn">✏</div><div class="act-btn">🗑</div></div>
+          </div>
+          <div class="item">
+            <span class="icon">📄</span>
+            <span class="title">产品需求分析</span>
+            <div class="actions"><div class="act-btn">✏</div><div class="act-btn">🗑</div></div>
+          </div>
+          <div class="item">
+            <span class="icon">📄</span>
+            <span class="title">API 接口文档模板</span>
+            <div class="actions"><div class="act-btn">✏</div><div class="act-btn">🗑</div></div>
+          </div>
+        </div>
+        <div class="palette-row">
+          <div class="palette-swatch" style="background:#f6f8f5" data-label="面板"></div>
+          <div class="palette-swatch" style="background:#eff3ed" data-label="表面"></div>
+          <div class="palette-swatch" style="background:#dfe5db" data-label="边框"></div>
+          <div class="palette-swatch" style="background:#4a5a48" data-label="主文字"></div>
+          <div class="palette-swatch" style="background:#8a9a88" data-label="副文字"></div>
+          <div class="palette-swatch" style="background:#7c3aed" data-label="强调"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  <strong>选择方式</strong>：告诉我你喜欢的方案编号（A / B / C / D），我会将对应配色实现到 Swift 代码中。<br>
+  也可以混搭，比如「A 的底色 + C 的文字色」，我来调。<br><br>
+  所有方案均保留原有紫色强调色 <span style="display:inline-block;width:12px;height:12px;background:#7c3aed;border-radius:3px;vertical-align:middle;"></span> #7c3aed，确保品牌一致性。
+</div>
+
+</body>
+</html>

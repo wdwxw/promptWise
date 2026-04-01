@@ -1,17 +1,7 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
-// MARK: - Theme Constants
-
-enum Theme {
-    static let panelBg = Color(nsColor: NSColor(red: 0.118, green: 0.118, blue: 0.118, alpha: 1)) // #1e1e1e
-    static let surfaceBg = Color(nsColor: NSColor(red: 0.145, green: 0.145, blue: 0.145, alpha: 1)) // #252525
-    static let border = Color(nsColor: NSColor(red: 0.165, green: 0.165, blue: 0.165, alpha: 1)) // #2a2a2a
-    static let textPrimary = Color(nsColor: NSColor(red: 0.733, green: 0.733, blue: 0.733, alpha: 1)) // #bbb
-    static let textSecondary = Color(nsColor: NSColor(red: 0.6, green: 0.6, blue: 0.6, alpha: 1)) // #999
-    static let textTertiary = Color(nsColor: NSColor(red: 0.333, green: 0.333, blue: 0.333, alpha: 1)) // #555
-    static let accent = Color(nsColor: NSColor(red: 0.486, green: 0.227, blue: 0.929, alpha: 1)) // #7c3aed
-    static let accentSubtle = Color(nsColor: NSColor(red: 0.655, green: 0.545, blue: 0.980, alpha: 1)) // #a78bfa
-}
+// Theme colors are now managed by ThemeManager
 
 enum ViewMode: String, CaseIterable {
     case list = "列表"
@@ -27,6 +17,7 @@ enum ViewMode: String, CaseIterable {
 
 struct MainPanelView: View {
     @ObservedObject var store: PromptStore
+    @EnvironmentObject var theme: ThemeManager
     let onClose: () -> Void
 
     @State private var searchText = ""
@@ -36,6 +27,7 @@ struct MainPanelView: View {
     @State private var showingCategoryManager = false
     @State private var editingPrompt: Prompt?
     @State private var copiedPromptId: UUID?
+    @State private var showingImport = false
 
     private var filteredPrompts: [Prompt] {
         store.searchPrompts(query: searchText, categoryId: selectedCategoryId)
@@ -51,11 +43,11 @@ struct MainPanelView: View {
             promptContent
         }
         .frame(minWidth: 320, minHeight: 400)
-        .background(Theme.panelBg)
+        .background(theme.panelBg)
         .clipShape(RoundedRectangle(cornerRadius: 10))
         .overlay(
             RoundedRectangle(cornerRadius: 10)
-                .strokeBorder(Theme.border, lineWidth: 1)
+                .strokeBorder(theme.border, lineWidth: 1)
         )
         .sheet(isPresented: $showingAddPrompt) {
             PromptEditView(store: store, prompt: nil, defaultCategoryId: selectedCategoryId)
@@ -66,10 +58,13 @@ struct MainPanelView: View {
         .sheet(isPresented: $showingCategoryManager) {
             CategoryManagerView(store: store)
         }
+        .sheet(isPresented: $showingImport) {
+            ImportView(store: store)
+        }
     }
 
     private var divider: some View {
-        Rectangle().fill(Theme.border).frame(height: 1)
+        Rectangle().fill(theme.border).frame(height: 1)
     }
 
     // MARK: - Title Bar
@@ -81,7 +76,15 @@ struct MainPanelView: View {
 
             Text("提示语")
                 .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(Theme.textSecondary)
+                .foregroundStyle(theme.textSecondary)
+
+            Text("\(store.prompts.count)")
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(theme.textTertiary)
+                .padding(.horizontal, 5)
+                .padding(.vertical, 1)
+                .background(theme.surfaceBg)
+                .clipShape(Capsule())
 
             Spacer()
 
@@ -89,16 +92,42 @@ struct MainPanelView: View {
                 showingAddPrompt = true
             }
 
-            headerButton(icon: "gearshape", label: nil) {
-                showingCategoryManager = true
+            Menu {
+                Button { showingCategoryManager = true } label: {
+                    Label("分类管理", systemImage: "folder")
+                }
+                Divider()
+                Button { showingImport = true } label: {
+                    Label("批量导入...", systemImage: "square.and.arrow.down")
+                }
+                Button { exportPrompts() } label: {
+                    Label("导出数据...", systemImage: "square.and.arrow.up")
+                }
+                Divider()
+                Button {
+                    NotificationCenter.default.post(name: .openSettings, object: nil)
+                } label: {
+                    Label("设置...", systemImage: "gearshape")
+                }
+            } label: {
+                Image(systemName: "gearshape")
+                    .font(.system(size: 11))
+                    .foregroundStyle(theme.textTertiary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(theme.surfaceBg)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
             }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
 
             Button(action: onClose) {
                 Image(systemName: "xmark")
                     .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(Theme.textTertiary)
+                    .foregroundStyle(theme.textTertiary)
                     .frame(width: 20, height: 20)
-                    .background(Theme.surfaceBg)
+                    .background(theme.surfaceBg)
                     .clipShape(RoundedRectangle(cornerRadius: 4))
             }
             .buttonStyle(.plain)
@@ -117,10 +146,10 @@ struct MainPanelView: View {
                         .font(.system(size: 11, weight: .medium))
                 }
             }
-            .foregroundStyle(Theme.textTertiary)
+            .foregroundStyle(theme.textTertiary)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
-            .background(Theme.surfaceBg)
+            .background(theme.surfaceBg)
             .clipShape(RoundedRectangle(cornerRadius: 4))
         }
         .buttonStyle(.plain)
@@ -158,18 +187,18 @@ struct MainPanelView: View {
         HStack(spacing: 8) {
             HStack(spacing: 6) {
                 Image(systemName: "magnifyingglass")
-                    .foregroundStyle(Theme.textTertiary)
+                    .foregroundStyle(theme.textTertiary)
                     .font(.system(size: 11))
 
                 TextField("搜索...", text: $searchText)
                     .textFieldStyle(.plain)
                     .font(.system(size: 12))
-                    .foregroundStyle(Theme.textPrimary)
+                    .foregroundStyle(theme.textPrimary)
 
                 if !searchText.isEmpty {
                     Button(action: { searchText = "" }) {
                         Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(Theme.textTertiary)
+                            .foregroundStyle(theme.textTertiary)
                             .font(.system(size: 10))
                     }
                     .buttonStyle(.plain)
@@ -177,11 +206,11 @@ struct MainPanelView: View {
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
-            .background(Theme.surfaceBg)
+            .background(theme.surfaceBg)
             .clipShape(RoundedRectangle(cornerRadius: 6))
             .overlay(
                 RoundedRectangle(cornerRadius: 6)
-                    .strokeBorder(Theme.border, lineWidth: 1)
+                    .strokeBorder(theme.border, lineWidth: 1)
             )
 
             Picker("", selection: $viewMode) {
@@ -229,18 +258,18 @@ struct MainPanelView: View {
             Spacer()
             Image(systemName: "text.bubble")
                 .font(.system(size: 32))
-                .foregroundStyle(Theme.textTertiary)
+                .foregroundStyle(theme.textTertiary)
             Text(searchText.isEmpty ? "还没有提示语" : "没有搜索结果")
                 .font(.system(size: 13))
-                .foregroundStyle(Theme.textTertiary)
+                .foregroundStyle(theme.textTertiary)
             if searchText.isEmpty {
                 Button(action: { showingAddPrompt = true }) {
                     Text("＋ 新建")
                         .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(Theme.accentSubtle)
+                        .foregroundStyle(theme.accentSubtle)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 5)
-                        .background(Theme.accent.opacity(0.12))
+                        .background(theme.accent.opacity(0.12))
                         .clipShape(RoundedRectangle(cornerRadius: 5))
                 }
                 .buttonStyle(.plain)
@@ -251,6 +280,18 @@ struct MainPanelView: View {
     }
 
     // MARK: - Actions
+
+    private func exportPrompts() {
+        guard let data = store.exportData() else { return }
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.json]
+        panel.nameFieldStringValue = "PromptWise-export.json"
+        panel.title = "导出提示语数据"
+        NSApp.activate(ignoringOtherApps: true)
+        if panel.runModal() == .OK, let url = panel.url {
+            try? data.write(to: url)
+        }
+    }
 
     private func copyPrompt(_ prompt: Prompt) {
         NSPasteboard.general.clearContents()
@@ -272,6 +313,7 @@ struct MainPanelView: View {
 // MARK: - Category Chip (Notion style)
 
 struct CategoryChip: View {
+    @EnvironmentObject var theme: ThemeManager
     let name: String
     let icon: String
     let isSelected: Bool
@@ -287,8 +329,8 @@ struct CategoryChip: View {
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
-            .foregroundStyle(isSelected ? Theme.accentSubtle : Theme.textTertiary)
-            .background(isSelected ? Theme.accent.opacity(0.12) : Color.clear)
+            .foregroundStyle(isSelected ? theme.accentSubtle : theme.textTertiary)
+            .background(isSelected ? theme.accent.opacity(0.12) : Color.clear)
             .clipShape(RoundedRectangle(cornerRadius: 4))
         }
         .buttonStyle(.plain)
