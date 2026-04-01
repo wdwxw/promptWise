@@ -25,6 +25,23 @@ struct SettingsView: View {
                 Divider()
 
                 HStack(alignment: .top, spacing: 12) {
+                    Text("数据新增：")
+                        .font(.system(size: 13))
+                        .frame(width: 70, alignment: .trailing)
+
+                    Picker("", selection: $theme.dataAddPosition) {
+                        ForEach(DataAddPosition.allCases) { position in
+                            Text(position.displayName).tag(position)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .frame(width: 100)
+                    .controlSize(.small)
+                }
+
+                Divider()
+
+                HStack(alignment: .top, spacing: 12) {
                     Text("快捷图标：")
                         .font(.system(size: 13))
                         .frame(width: 70, alignment: .trailing)

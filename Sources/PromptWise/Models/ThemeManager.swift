@@ -21,6 +21,20 @@ enum ThemeMode: String, CaseIterable, Identifiable {
     }
 }
 
+enum DataAddPosition: String, CaseIterable, Identifiable {
+    case top = "top"
+    case bottom = "bottom"
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .top: return "顶部追加"
+        case .bottom: return "末尾追加"
+        }
+    }
+}
+
 final class ThemeManager: ObservableObject {
     static let shared = ThemeManager()
 
@@ -51,6 +65,11 @@ final class ThemeManager: ObservableObject {
         }
     }
 
+    /// 数据新增位置（顶部或末尾）
+    @Published var dataAddPosition: DataAddPosition {
+        didSet { UserDefaults.standard.set(dataAddPosition.rawValue, forKey: "dataAddPosition") }
+    }
+
     static let dismissDelayOptions: [Double] = [0.5, 1, 2, 3, 5, 8, 10]
     static let itemCountOptions: [Int] = [5, 10, 15, 20, 30, 50]
 
@@ -67,6 +86,8 @@ final class ThemeManager: ObservableObject {
         } else {
             self.quickAccessCategoryId = nil
         }
+        let savedPosition = UserDefaults.standard.string(forKey: "dataAddPosition") ?? "bottom"
+        self.dataAddPosition = DataAddPosition(rawValue: savedPosition) ?? .bottom
     }
 
     // MARK: - Panel Background (#1e1e1e / #ffffff)

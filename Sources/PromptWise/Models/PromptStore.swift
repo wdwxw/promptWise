@@ -57,7 +57,11 @@ final class PromptStore: ObservableObject {
     func addPrompt(_ prompt: Prompt) {
         var newPrompt = prompt
         newPrompt.order = (prompts.map(\.order).max() ?? -1) + 1
-        prompts.append(newPrompt)
+        if ThemeManager.shared.dataAddPosition == .top {
+            prompts.insert(newPrompt, at: 0)
+        } else {
+            prompts.append(newPrompt)
+        }
         save()
     }
 
