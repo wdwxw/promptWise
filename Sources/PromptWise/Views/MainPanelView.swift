@@ -30,6 +30,11 @@ struct MainPanelView: View {
     @State private var showingImport = false
     @State private var showingCollectionManager = false
 
+    // PromptEditView 窗口控制器
+    @State private var promptEditWindowController: PromptEditWindowController?
+    @State private var promptEditPrompt: Prompt? // 要编辑的提示语（nil 表示新建）
+    @State private var promptEditDefaultCategoryId: UUID? // 新建时的默认分类
+
     private var filteredPrompts: [Prompt] {
         store.searchPrompts(query: searchText, categoryId: selectedCategoryId)
     }
@@ -51,11 +56,24 @@ struct MainPanelView: View {
                 .strokeBorder(theme.border, lineWidth: 1)
         )
         .environment(\.colorScheme, theme.mode == .dark ? .dark : .light)
-        .sheet(isPresented: $showingAddPrompt) {
-            PromptEditView(store: store, prompt: nil, defaultCategoryId: selectedCategoryId)
+        .onChange(of: showingAddPrompt) { newValue in
+            if newValue {
+                showPromptEditWindow(prompt: nil, defaultCategoryId: selectedCategoryId)
+            } else {
+                // 延迟关闭，确保 sheet 先完成关闭动画
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [promptEditWindowController] in
+                    promptEditWindowController?.close()
+                }
+            }
         }
-        .sheet(item: $editingPrompt) { prompt in
-            PromptEditView(store: store, prompt: prompt, defaultCategoryId: nil)
+        .onChange(of: editingPrompt) { newValue in
+            if let prompt = newValue {
+                showPromptEditWindow(prompt: prompt, defaultCategoryId: nil)
+            } else {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [promptEditWindowController] in
+                    promptEditWindowController?.close()
+                }
+            }
         }
         .sheet(isPresented: $showingCategoryManager) {
             CategoryManagerView(store: store)
@@ -69,6 +87,29 @@ struct MainPanelView: View {
             }
             .environmentObject(theme)
         }
+    }
+
+    // MARK: - PromptEditWindow Management
+
+    private func showPromptEditWindow(prompt: Prompt?, defaultCategoryId: UUID?) {
+        // 关闭之前的窗口
+        promptEditWindowController?.close()
+
+        let controller = PromptEditWindowController(
+            store: store,
+            prompt: prompt,
+            defaultCategoryId: defaultCategoryId,
+            onDismiss: { [self] in
+                // 注意：由于 SwiftUI View 是值类型，这里使用 [self] 捕获
+                // 窗口关闭时，重置状态
+                DispatchQueue.main.async {
+                    self.showingAddPrompt = false
+                    self.editingPrompt = nil
+                }
+            }
+        )
+        promptEditWindowController = controller
+        controller.showWindow()
     }
 
     private var divider: some View {
@@ -418,5 +459,102 @@ struct CategoryChip: View {
             .clipShape(RoundedRectangle(cornerRadius: 4))
         }
         .buttonStyle(.plain)
+    }
+}
+
+// MARK: - DraggableWindow
+
+/// 支持拖动的窗口，类似 FloatingIconWindow 的实现方式
+final class DraggableWindow: NSPanel {
+    private var isDragging = false
+    private var dragStartLocation: NSPoint = .zero
+    private var windowStartOrigin: NSPoint = .zero
+
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { false }
+
+    // Intercept mouse events for window dragging
+    override func sendEvent(_ event: NSEvent) {
+        switch event.type {
+        case .leftMouseDown:
+            isDragging = false
+            dragStartLocation = NSEvent.mouseLocation
+            windowStartOrigin = self.frame.origin
+        case .leftMouseDragged:
+            let current = NSEvent.mouseLocation
+            let dx = current.x - dragStartLocation.x
+            let dy = current.y - dragStartLocation.y
+            if !isDragging && (abs(dx) > 2 || abs(dy) > 2) {
+                isDragging = true
+            }
+            if isDragging {
+                self.setFrameOrigin(NSPoint(
+                    x: windowStartOrigin.x + dx,
+                    y: windowStartOrigin.y + dy
+                ))
+            }
+        case .leftMouseUp:
+            isDragging = false
+        default:
+            super.sendEvent(event)
+        }
+    }
+}
+
+// MARK: - PromptEditWindowController
+
+final class PromptEditWindowController: NSObject, NSWindowDelegate {
+    private let window: DraggableWindow
+    private let onDismiss: () -> Void
+    private weak var hostingView: NSHostingView<AnyView>?
+
+    init(store: PromptStore, prompt: Prompt?, defaultCategoryId: UUID?, onDismiss: @escaping () -> Void) {
+        self.onDismiss = onDismiss
+
+        // 创建支持拖动的窗口
+        window = DraggableWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 480, height: 520),
+            styleMask: [.titled, .closable, .miniaturizable],
+            backing: .buffered,
+            defer: false
+        )
+
+        super.init()
+
+        window.title = prompt == nil ? "新增提示语" : "编辑提示语"
+        window.level = .floating
+        window.delegate = self
+        window.center()
+
+        // 创建 PromptEditView 并包装以便关闭
+        let promptEditView = PromptEditView(
+            store: store,
+            prompt: prompt,
+            defaultCategoryId: defaultCategoryId,
+            onDismiss: { [weak self] in
+                self?.window.close()
+            }
+        )
+
+        let containerView = AnyView(promptEditView)
+        let hosting = NSHostingView(rootView: containerView)
+        hostingView = hosting
+        window.contentView = hosting
+    }
+
+    func showWindow() {
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    func close() {
+        window.close()
+    }
+
+    // MARK: - NSWindowDelegate
+
+    func windowWillClose(_ notification: Notification) {
+        // 窗口关闭时调用 onDismiss
+        onDismiss()
     }
 }

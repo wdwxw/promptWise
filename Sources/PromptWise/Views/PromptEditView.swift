@@ -4,6 +4,7 @@ struct PromptEditView: View {
     @ObservedObject var store: PromptStore
     let prompt: Prompt?
     let defaultCategoryId: UUID?
+    var onDismiss: (() -> Void)? // 可选的 dismiss 回调，用于窗口模式
 
     @Environment(\.dismiss) private var dismiss
 
@@ -172,7 +173,7 @@ struct PromptEditView: View {
 
     private var footer: some View {
         HStack {
-            Button("取消") { dismiss() }
+            Button("取消") { handleDismiss() }
                 .keyboardShortcut(.cancelAction)
 
             Spacer()
@@ -196,6 +197,11 @@ struct PromptEditView: View {
                 .frame(width: 0, height: 0)
         }
         .padding(16)
+    }
+
+    private func handleDismiss() {
+        onDismiss?()
+        dismiss()
     }
 
     private func savePrompt() {
@@ -229,6 +235,6 @@ struct PromptEditView: View {
         } else {
             store.addPrompt(Prompt(title: trimmedTitle, content: content, categoryId: categoryId))
         }
-        dismiss()
+        handleDismiss()
     }
 }
