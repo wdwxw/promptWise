@@ -4,12 +4,32 @@ import SwiftUI
 struct AppData: Codable {
     var prompts: [Prompt]
     var categories: [Category]
+    var collections: [PromptCollection]
+
+    init(prompts: [Prompt], categories: [Category], collections: [PromptCollection] = []) {
+        self.prompts = prompts
+        self.categories = categories
+        self.collections = collections
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case prompts, categories, collections
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        prompts = try c.decode([Prompt].self, forKey: .prompts)
+        categories = try c.decode([Category].self, forKey: .categories)
+        // 兼容旧数据文件（不含 collections 字段）
+        collections = try c.decodeIfPresent([PromptCollection].self, forKey: .collections) ?? []
+    }
 }
 
 @MainActor
 final class PromptStore: ObservableObject {
     @Published var prompts: [Prompt] = []
     @Published var categories: [Category] = []
+    @Published var collections: [PromptCollection] = []
 
     private let fileURL: URL
 
@@ -34,6 +54,7 @@ final class PromptStore: ObservableObject {
             let appData = try decoder.decode(AppData.self, from: data)
             self.prompts = appData.prompts.sorted { $0.order < $1.order }
             self.categories = appData.categories.sorted { $0.order < $1.order }
+            self.collections = appData.collections
         } catch {
             print("Failed to load data: \(error)")
         }
@@ -41,7 +62,7 @@ final class PromptStore: ObservableObject {
 
     func save() {
         do {
-            let appData = AppData(prompts: prompts, categories: categories)
+            let appData = AppData(prompts: prompts, categories: categories, collections: collections)
             let encoder = JSONEncoder()
             encoder.dateEncodingStrategy = .iso8601
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -62,6 +83,34 @@ final class PromptStore: ObservableObject {
         } else {
             prompts.append(newPrompt)
         }
+        save()
+    }
+
+    /// 清除所有提示语的使用统计（累计次数 + 时间记录）
+    func clearAllUsageStats() {
+        for i in prompts.indices {
+            prompts[i].usageCount = 0
+            prompts[i].recentUsages = []
+        }
+        save()
+    }
+
+    /// 只清除近 7 天使用记录，保留累计总次数
+    func clearRecentUsageStats() {
+        for i in prompts.indices {
+            prompts[i].recentUsages = []
+        }
+        save()
+    }
+
+    /// 记录一次使用（复制或拖拽），更新累计次数与近 30 天时间戳
+    func recordUsage(id: UUID) {
+        guard let index = prompts.firstIndex(where: { $0.id == id }) else { return }
+        let now = Date()
+        let cutoff = Calendar.current.date(byAdding: .day, value: -30, to: now)!
+        prompts[index].usageCount += 1
+        prompts[index].recentUsages.append(now)
+        prompts[index].recentUsages = prompts[index].recentUsages.filter { $0 >= cutoff }
         save()
     }
 
@@ -285,5 +334,32 @@ final class PromptStore: ObservableObject {
             categories[i].order = i
         }
         save()
+    }
+
+    // MARK: - Collections
+
+    func addCollection(_ collection: PromptCollection) {
+        collections.append(collection)
+        save()
+    }
+
+    func updateCollection(_ collection: PromptCollection) {
+        guard let index = collections.firstIndex(where: { $0.id == collection.id }) else { return }
+        var updated = collection
+        updated.updatedAt = Date()
+        collections[index] = updated
+        save()
+    }
+
+    func deleteCollection(id: UUID) {
+        collections.removeAll { $0.id == id }
+        save()
+    }
+
+    /// 返回集合中有效的提示语（按集合内顺序）
+    func prompts(in collection: PromptCollection) -> [Prompt] {
+        collection.promptIds.compactMap { id in
+            prompts.first { $0.id == id }
+        }
     }
 }

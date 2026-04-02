@@ -22,7 +22,8 @@ final class QuickAccessWindow: NSPanel {
         self.contentView = hostingView
     }
 
-    override var canBecomeKey: Bool { true }
+    // 返回 false 防止点击快捷按钮时抢夺浏览器等外部应用的 Key Window 焦点
+    override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
 
     func repositionBelow(window: NSWindow) {

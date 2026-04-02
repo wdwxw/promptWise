@@ -28,6 +28,7 @@ struct MainPanelView: View {
     @State private var editingPrompt: Prompt?
     @State private var copiedPromptId: UUID?
     @State private var showingImport = false
+    @State private var showingCollectionManager = false
 
     private var filteredPrompts: [Prompt] {
         store.searchPrompts(query: searchText, categoryId: selectedCategoryId)
@@ -61,6 +62,12 @@ struct MainPanelView: View {
         }
         .sheet(isPresented: $showingImport) {
             ImportView(store: store)
+        }
+        .sheet(isPresented: $showingCollectionManager) {
+            PromptCollectionManagerView(store: store) {
+                showingCollectionManager = false
+            }
+            .environmentObject(theme)
         }
     }
 
@@ -137,6 +144,50 @@ struct MainPanelView: View {
         .padding(.vertical, 10)
     }
 
+    /// 集合入口胶囊按钮（固定在分类栏右侧）
+    private var collectionButton: some View {
+        ZStack(alignment: .topTrailing) {
+            Button(action: { showingCollectionManager = true }) {
+                HStack(spacing: 4) {
+                    Image(systemName: "rectangle.stack")
+                        .font(.system(size: 10))
+                    Text("集合")
+                        .font(.system(size: 11, weight: .medium))
+                }
+                .foregroundStyle(store.collections.isEmpty ? theme.textTertiary : Color.orange)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(
+                    store.collections.isEmpty
+                        ? Color.clear
+                        : Color.orange.opacity(0.12)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 4))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 4)
+                        .strokeBorder(
+                            store.collections.isEmpty
+                                ? theme.textTertiary.opacity(0.2)
+                                : Color.orange.opacity(0.3),
+                            lineWidth: 1
+                        )
+                )
+            }
+            .buttonStyle(.plain)
+
+            if !store.collections.isEmpty {
+                Text("\(store.collections.count)")
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 3)
+                    .padding(.vertical, 1)
+                    .background(Color.orange)
+                    .clipShape(Capsule())
+                    .offset(x: 5, y: -5)
+            }
+        }
+    }
+
     private func headerButton(icon: String, label: String?, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 4) {
@@ -159,26 +210,33 @@ struct MainPanelView: View {
     // MARK: - Category Bar
 
     private var categoryBar: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
-                CategoryChip(
-                    name: "全部",
-                    icon: "tray.full",
-                    isSelected: selectedCategoryId == nil,
-                    action: { selectedCategoryId = nil }
-                )
-
-                ForEach(store.categories) { category in
+        HStack(spacing: 0) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
                     CategoryChip(
-                        name: category.name,
-                        icon: category.icon,
-                        isSelected: selectedCategoryId == category.id,
-                        action: { selectedCategoryId = category.id }
+                        name: "全部",
+                        icon: "tray.full",
+                        isSelected: selectedCategoryId == nil,
+                        action: { selectedCategoryId = nil }
                     )
+
+                    ForEach(store.categories) { category in
+                        CategoryChip(
+                            name: category.name,
+                            icon: category.icon,
+                            isSelected: selectedCategoryId == category.id,
+                            action: { selectedCategoryId = category.id }
+                        )
+                    }
                 }
+                .padding(.leading, 14)
+                .padding(.vertical, 8)
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
+
+            // 集合入口（固定在分类栏右侧）
+            collectionButton
+                .padding(.trailing, 14)
+                .padding(.vertical, 8)
         }
     }
 
@@ -325,6 +383,7 @@ struct CustomSegmentedControl: View {
                         .frame(width: 28, height: 24)
                         .background(selection == mode ? theme.surfaceBg : Color.clear)
                         .clipShape(RoundedRectangle(cornerRadius: 4))
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }

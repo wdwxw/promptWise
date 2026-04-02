@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject var theme: ThemeManager
     @ObservedObject var store: PromptStore
+    @State private var showingStats = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -101,9 +102,27 @@ struct SettingsView: View {
                         }
                     }
                 }
+
+                Divider()
+
+                HStack(alignment: .top, spacing: 12) {
+                    Text("数据统计：")
+                        .font(.system(size: 13))
+                        .frame(width: 70, alignment: .trailing)
+
+                    Button {
+                        showingStats = true
+                    } label: {
+                        Label("查看提示语统计", systemImage: "chart.bar.xaxis")
+                    }
+                    .controlSize(.small)
+                }
             }
             .padding(30)
             .frame(width: 340)
+            .sheet(isPresented: $showingStats) {
+                PromptStatsView(store: store)
+            }
 
             Spacer()
                 .frame(height: 2)

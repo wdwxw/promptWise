@@ -31,6 +31,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
+        // 监听新窗口（如 Sheet）出现，防止与悬浮图标重叠
+        // 同时监听 didBecomeKey 和 didOrderOnScreen 两个事件，提高捕获率
+        for notifName in [NSWindow.didBecomeKeyNotification, NSWindow.didBecomeMainNotification] {
+            NotificationCenter.default.addObserver(
+                forName: notifName, object: nil, queue: .main
+            ) { [weak self] note in
+                guard let self, let window = note.object as? NSWindow else { return }
+                // 让系统完成布局后再检测
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    self.repositionSheetWindowIfOverlapsIcon(window)
+                }
+            }
+        }
+
         floatingIconWindow.makeKeyAndOrderFront(nil)
     }
 
@@ -161,6 +175,41 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func quitApp() {
         NSApplication.shared.terminate(nil)
+    }
+
+    // MARK: - Sheet Overlap Prevention
+
+    /// 检测弹出窗口是否与悬浮图标重叠，若是则自动移位
+    private func repositionSheetWindowIfOverlapsIcon(_ window: NSWindow) {
+        // 只处理来自主面板的子窗口（sheet），跳过已知的固定窗口
+        guard window !== floatingIconWindow,
+              window !== mainPanelWindow,
+              window !== quickAccessWindow,
+              window !== settingsWindow,
+              window.frame.width > 100
+        else { return }
+
+        let iconFrame = floatingIconWindow.frame
+        // 给悬浮图标加一些缓冲区
+        let iconGuard = iconFrame.insetBy(dx: -16, dy: -16)
+        guard window.frame.intersects(iconGuard) else { return }
+
+        guard let screen = window.screen ?? NSScreen.main else { return }
+        let screenFrame = screen.visibleFrame
+        var origin = window.frame.origin
+        let winWidth = window.frame.width
+
+        if iconFrame.midX > screenFrame.midX {
+            // 图标在屏幕右侧 → 将 sheet 移到图标左侧
+            let proposedX = iconFrame.minX - winWidth - 16
+            origin.x = max(screenFrame.minX, proposedX)
+        } else {
+            // 图标在屏幕左侧 → 将 sheet 移到图标右侧
+            let proposedX = iconFrame.maxX + 16
+            origin.x = min(proposedX, screenFrame.maxX - winWidth)
+        }
+
+        window.setFrameOrigin(origin)
     }
 }
 

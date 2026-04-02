@@ -48,7 +48,8 @@ final class FloatingIconWindow: NSPanel {
         self.setFrameOrigin(NSPoint(x: x, y: y))
     }
 
-    override var canBecomeKey: Bool { true }
+    // 返回 false 防止点击/拖动悬浮图标时抢夺外部应用的 Key Window 焦点
+    override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
 
     // Intercept ALL mouse events at the window level before they reach SwiftUI

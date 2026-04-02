@@ -9,10 +9,18 @@ struct PromptListView: View {
     @Binding var copiedPromptId: UUID?
     let onEdit: (Prompt) -> Void
     let onCopy: (Prompt) -> Void
+    var onExternalDrop: ((Prompt) -> Void)? = nil
 
     @State private var draggingPrompt: Prompt?
     @State private var originalOrder: [UUID]?
     @State private var dropFlag = DropFlag()
+
+    /// 全局序号：prompt.id -> 在 store.prompts 中的 1-based 位置
+    private var globalIndexLookup: [UUID: Int] {
+        Dictionary(
+            uniqueKeysWithValues: store.prompts.enumerated().map { ($1.id, $0 + 1) }
+        )
+    }
 
     var body: some View {
         ScrollView {
@@ -20,6 +28,7 @@ struct PromptListView: View {
                 ForEach(prompts) { prompt in
                     PromptRowView(
                         prompt: prompt,
+                        globalIndex: globalIndexLookup[prompt.id],
                         isCopied: copiedPromptId == prompt.id,
                         onCopy: { onCopy(prompt) },
                         onEdit: { onEdit(prompt) },
@@ -36,7 +45,8 @@ struct PromptListView: View {
                             }
                             draggingPrompt = nil
                             originalOrder = nil
-                        }
+                        },
+                        onExternalDrop: onExternalDrop
                     )
                     .onDrop(of: [.text], delegate: PromptDropDelegate(
                         targetPrompt: prompt,
@@ -57,6 +67,8 @@ struct PromptListView: View {
 struct PromptRowView: View {
     @EnvironmentObject var theme: ThemeManager
     let prompt: Prompt
+    /// 在 store.prompts 中的 1-based 全局序号，nil 表示不显示
+    var globalIndex: Int? = nil
     let isCopied: Bool
     let onCopy: () -> Void
     let onEdit: () -> Void
@@ -64,6 +76,7 @@ struct PromptRowView: View {
     let onToggleStar: () -> Void
     let onDragStarted: (Prompt) -> Void
     let onDragEnded: () -> Void
+    var onExternalDrop: ((Prompt) -> Void)? = nil
 
     @State private var isHovered = false
     @State private var showPopover = false
@@ -74,13 +87,31 @@ struct PromptRowView: View {
                 prompt: prompt,
                 onDragStarted: onDragStarted,
                 onDragEnded: onDragEnded,
-                onTap: onCopy
+                onTap: onCopy,
+                onExternalDrop: onExternalDrop
             )
 
             HStack(spacing: 8) {
-                Image(systemName: prompt.isStarred ? "star.fill" : "doc.text")
-                    .font(.system(size: 12))
-                    .foregroundStyle(prompt.isStarred ? .yellow : theme.textTertiary)
+                // 序号（有序号时显示数字，starred 时叠加小星标）
+                ZStack(alignment: .topTrailing) {
+                    if let idx = globalIndex {
+                        Text("\(idx)")
+                            .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                            .foregroundStyle(theme.textTertiary)
+                            .frame(width: 18, alignment: .center)
+                    } else {
+                        Image(systemName: "doc.text")
+                            .font(.system(size: 12))
+                            .foregroundStyle(theme.textTertiary)
+                    }
+                    if prompt.isStarred {
+                        Image(systemName: "star.fill")
+                            .font(.system(size: 6))
+                            .foregroundStyle(.yellow)
+                            .offset(x: 3, y: -3)
+                    }
+                }
+                .frame(width: 18)
 
                 Text(prompt.title)
                     .font(.system(size: 13))
@@ -188,6 +219,7 @@ struct PromptGridView: View {
     @Binding var copiedPromptId: UUID?
     let onEdit: (Prompt) -> Void
     let onCopy: (Prompt) -> Void
+    var onExternalDrop: ((Prompt) -> Void)? = nil
 
     @State private var draggingPrompt: Prompt?
     @State private var originalOrder: [UUID]?
@@ -219,7 +251,8 @@ struct PromptGridView: View {
                             }
                             draggingPrompt = nil
                             originalOrder = nil
-                        }
+                        },
+                        onExternalDrop: onExternalDrop
                     )
                     .onDrop(of: [.text], delegate: PromptDropDelegate(
                         targetPrompt: prompt,
@@ -246,6 +279,7 @@ struct PromptGridItemView: View {
     let onToggleStar: () -> Void
     let onDragStarted: (Prompt) -> Void
     let onDragEnded: () -> Void
+    var onExternalDrop: ((Prompt) -> Void)? = nil
 
     @State private var isHovered = false
     @State private var showPopover = false
@@ -256,7 +290,8 @@ struct PromptGridItemView: View {
                 prompt: prompt,
                 onDragStarted: onDragStarted,
                 onDragEnded: onDragEnded,
-                onTap: onCopy
+                onTap: onCopy,
+                onExternalDrop: onExternalDrop
             )
 
             VStack(spacing: 4) {

@@ -7,15 +7,16 @@ struct PromptDragHandle: NSViewRepresentable {
     let prompt: Prompt
     let onDragStarted: (Prompt) -> Void
     let onDragEnded: () -> Void
+    var onExternalDrop: ((Prompt) -> Void)? = nil
 
     func makeNSView(context: Context) -> PromptDragHandleView {
         let view = PromptDragHandleView()
-        view.configure(prompt: prompt, onDragStarted: onDragStarted, onDragEnded: onDragEnded)
+        view.configure(prompt: prompt, onDragStarted: onDragStarted, onDragEnded: onDragEnded, onExternalDrop: onExternalDrop)
         return view
     }
 
     func updateNSView(_ nsView: PromptDragHandleView, context: Context) {
-        nsView.configure(prompt: prompt, onDragStarted: onDragStarted, onDragEnded: onDragEnded)
+        nsView.configure(prompt: prompt, onDragStarted: onDragStarted, onDragEnded: onDragEnded, onExternalDrop: onExternalDrop)
     }
 }
 
@@ -24,6 +25,7 @@ final class PromptDragHandleView: NSView, NSDraggingSource {
     private var promptTitle: String = ""
     private var onDragStarted: (() -> Void)?
     private var onDragEnded: (() -> Void)?
+    private var onExternalDrop: (() -> Void)?
     private var mouseDownPoint: NSPoint = .zero
     private var hasDragStarted = false
 
@@ -31,11 +33,17 @@ final class PromptDragHandleView: NSView, NSDraggingSource {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override var mouseDownCanMoveWindow: Bool { false }
 
-    func configure(prompt: Prompt, onDragStarted: @escaping (Prompt) -> Void, onDragEnded: @escaping () -> Void) {
+    func configure(
+        prompt: Prompt,
+        onDragStarted: @escaping (Prompt) -> Void,
+        onDragEnded: @escaping () -> Void,
+        onExternalDrop: ((Prompt) -> Void)? = nil
+    ) {
         self.promptContent = prompt.content
         self.promptTitle = prompt.title
         self.onDragStarted = { onDragStarted(prompt) }
         self.onDragEnded = onDragEnded
+        self.onExternalDrop = onExternalDrop.map { handler in { handler(prompt) } }
     }
 
     override func draw(_ dirtyRect: NSRect) {
@@ -104,6 +112,9 @@ final class PromptDragHandleView: NSView, NSDraggingSource {
         endedAt screenPoint: NSPoint,
         operation: NSDragOperation
     ) {
+        if operation == .copy {
+            onExternalDrop?()
+        }
         onDragEnded?()
     }
 
@@ -142,15 +153,16 @@ struct DraggablePromptOverlay: NSViewRepresentable {
     let onDragStarted: (Prompt) -> Void
     let onDragEnded: () -> Void
     let onTap: () -> Void
+    var onExternalDrop: ((Prompt) -> Void)? = nil
 
     func makeNSView(context: Context) -> DraggablePromptOverlayView {
         let view = DraggablePromptOverlayView()
-        view.configure(prompt: prompt, onDragStarted: onDragStarted, onDragEnded: onDragEnded, onTap: onTap)
+        view.configure(prompt: prompt, onDragStarted: onDragStarted, onDragEnded: onDragEnded, onTap: onTap, onExternalDrop: onExternalDrop)
         return view
     }
 
     func updateNSView(_ nsView: DraggablePromptOverlayView, context: Context) {
-        nsView.configure(prompt: prompt, onDragStarted: onDragStarted, onDragEnded: onDragEnded, onTap: onTap)
+        nsView.configure(prompt: prompt, onDragStarted: onDragStarted, onDragEnded: onDragEnded, onTap: onTap, onExternalDrop: onExternalDrop)
     }
 }
 
@@ -159,6 +171,7 @@ final class DraggablePromptOverlayView: NSView, NSDraggingSource {
     private var promptTitle: String = ""
     private var onDragStarted: (() -> Void)?
     private var onDragEnded: (() -> Void)?
+    private var onExternalDrop: (() -> Void)?
     private var onTap: (() -> Void)?
     private var mouseDownPoint: NSPoint = .zero
     private var hasDragStarted = false
@@ -171,12 +184,14 @@ final class DraggablePromptOverlayView: NSView, NSDraggingSource {
         prompt: Prompt,
         onDragStarted: @escaping (Prompt) -> Void,
         onDragEnded: @escaping () -> Void,
-        onTap: @escaping () -> Void
+        onTap: @escaping () -> Void,
+        onExternalDrop: ((Prompt) -> Void)? = nil
     ) {
         self.promptContent = prompt.content
         self.promptTitle = prompt.title
         self.onDragStarted = { onDragStarted(prompt) }
         self.onDragEnded = onDragEnded
+        self.onExternalDrop = onExternalDrop.map { handler in { handler(prompt) } }
         self.onTap = onTap
     }
 
@@ -224,6 +239,9 @@ final class DraggablePromptOverlayView: NSView, NSDraggingSource {
         endedAt screenPoint: NSPoint,
         operation: NSDragOperation
     ) {
+        if operation == .copy {
+            onExternalDrop?()
+        }
         onDragEnded?()
     }
 
