@@ -11,8 +11,21 @@ struct PromptEditView: View {
     @State private var content: String = ""
     @State private var categoryId: UUID?
     @State private var showPreview = false
+    @State private var showingDuplicateAlert = false
 
     private var isEditing: Bool { prompt != nil }
+
+    /// Token 估算：CJK 汉字约 1 字 ≈ 1 Token，其他字符约 4 字 ≈ 1 Token
+    private var tokenEstimate: Int {
+        guard !content.isEmpty else { return 0 }
+        let cjkCount = content.unicodeScalars.filter {
+            ($0.value >= 0x4E00 && $0.value <= 0x9FFF) ||  // CJK 统一汉字
+            ($0.value >= 0x3400 && $0.value <= 0x4DBF) ||  // CJK 扩展A
+            ($0.value >= 0x20000 && $0.value <= 0x2A6DF)   // CJK 扩展B
+        }.count
+        let otherCount = content.count - cjkCount
+        return cjkCount + max(0, Int(ceil(Double(otherCount) / 4.0)))
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -31,6 +44,12 @@ struct PromptEditView: View {
             } else {
                 categoryId = defaultCategoryId
             }
+        }
+        .alert("标题已存在", isPresented: $showingDuplicateAlert) {
+            Button("取消", role: .cancel) {}
+            Button("覆盖", role: .destructive) { commitSave(overwrite: true) }
+        } message: {
+            Text("提示语「\(title.trimmingCharacters(in: .whitespaces))」已存在，是否用当前内容覆盖？")
         }
     }
 
@@ -88,6 +107,11 @@ struct PromptEditView: View {
                             .font(.system(size: 10))
                             .foregroundStyle(.tertiary)
                         Spacer()
+                        if !content.isEmpty {
+                            Text("\(content.count) 字 · ~\(tokenEstimate) Token")
+                                .font(.system(size: 10))
+                                .foregroundStyle(.tertiary)
+                        }
                         Toggle("预览", isOn: $showPreview)
                             .toggleStyle(.switch)
                             .controlSize(.small)
@@ -178,18 +202,32 @@ struct PromptEditView: View {
         let trimmedTitle = title.trimmingCharacters(in: .whitespaces)
         guard !trimmedTitle.isEmpty else { return }
 
+        // 新建时检测标题是否重复
+        if !isEditing, store.findPrompt(byTitle: trimmedTitle) != nil {
+            showingDuplicateAlert = true
+            return
+        }
+
+        commitSave()
+    }
+
+    private func commitSave(overwrite: Bool = false) {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespaces)
+        guard !trimmedTitle.isEmpty else { return }
+
         if var existing = prompt {
             existing.title = trimmedTitle
             existing.content = content
             existing.categoryId = categoryId
             store.updatePrompt(existing)
+        } else if overwrite, let existingPrompt = store.findPrompt(byTitle: trimmedTitle) {
+            var updated = existingPrompt
+            updated.title = trimmedTitle
+            updated.content = content
+            updated.categoryId = categoryId
+            store.updatePrompt(updated)
         } else {
-            let newPrompt = Prompt(
-                title: trimmedTitle,
-                content: content,
-                categoryId: categoryId
-            )
-            store.addPrompt(newPrompt)
+            store.addPrompt(Prompt(title: trimmedTitle, content: content, categoryId: categoryId))
         }
         dismiss()
     }

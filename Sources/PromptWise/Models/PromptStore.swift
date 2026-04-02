@@ -65,6 +65,25 @@ final class PromptStore: ObservableObject {
         save()
     }
 
+    /// 按标题精确查找提示语（用于重复检测）
+    func findPrompt(byTitle title: String) -> Prompt? {
+        prompts.first { $0.title == title }
+    }
+
+    /// 静默覆盖：标题已存在则更新内容，否则新增（用于批量导入）
+    func addOrOverwritePrompt(_ prompt: Prompt) {
+        if let index = prompts.firstIndex(where: { $0.title == prompt.title }) {
+            var updated = prompts[index]
+            updated.content = prompt.content
+            updated.categoryId = prompt.categoryId
+            updated.updatedAt = Date()
+            prompts[index] = updated
+            save()
+        } else {
+            addPrompt(prompt)
+        }
+    }
+
     func updatePrompt(_ prompt: Prompt) {
         guard let index = prompts.firstIndex(where: { $0.id == prompt.id }) else { return }
         var updated = prompt
@@ -172,14 +191,14 @@ final class PromptStore: ObservableObject {
             for var p in arr {
                 p.id = UUID()
                 p.categoryId = nil
-                addPrompt(p)
+                addOrOverwritePrompt(p)
             }
             return arr.count
         }
 
         struct SimplePrompt: Codable { let title: String; let content: String }
         if let arr = try? decoder.decode([SimplePrompt].self, from: data) {
-            for sp in arr { addPrompt(Prompt(title: sp.title, content: sp.content)) }
+            for sp in arr { addOrOverwritePrompt(Prompt(title: sp.title, content: sp.content)) }
             return arr.count
         }
 
@@ -204,7 +223,7 @@ final class PromptStore: ObservableObject {
             if let oldCatId = imported.categoryId {
                 p.categoryId = categoryMapping[oldCatId]
             }
-            addPrompt(p)
+            addOrOverwritePrompt(p)
             count += 1
         }
         return count
@@ -220,7 +239,7 @@ final class PromptStore: ObservableObject {
             guard let title = currentTitle, !title.isEmpty else { return }
             let content = currentContent.joined(separator: "\n")
                 .trimmingCharacters(in: .whitespacesAndNewlines)
-            addPrompt(Prompt(title: title, content: content))
+            addOrOverwritePrompt(Prompt(title: title, content: content))
             count += 1
         }
 

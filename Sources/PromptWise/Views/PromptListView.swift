@@ -145,9 +145,9 @@ struct PromptRowView: View {
         Button(action: action) {
             Image(systemName: icon)
                 .font(.system(size: 10))
-                .foregroundStyle(color ?? theme.textTertiary)
+                .foregroundStyle(color ?? theme.iconOnSurface)
                 .frame(width: 22, height: 22)
-                .background(theme.border)
+                .background(theme.surfaceBg)
                 .clipShape(RoundedRectangle(cornerRadius: 4))
         }
         .buttonStyle(.plain)
@@ -336,9 +336,9 @@ struct PromptGridItemView: View {
         Button(action: action) {
             Image(systemName: icon)
                 .font(.system(size: 9))
-                .foregroundStyle(color ?? theme.textTertiary)
+                .foregroundStyle(color ?? theme.iconOnSurface)
                 .frame(width: 18, height: 18)
-                .background(theme.border)
+                .background(theme.surfaceBg)
                 .clipShape(RoundedRectangle(cornerRadius: 3))
         }
         .buttonStyle(.plain)

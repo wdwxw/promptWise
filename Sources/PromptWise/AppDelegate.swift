@@ -45,6 +45,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         floatingIconWindow.onDragStarted = { [weak self] in
             self?.isIconDragging = true
+            self?.mainPanelWindow.orderOut(nil)
             self?.quickAccessWindow.orderOut(nil)
             self?.quickAccessDismissWork?.cancel()
         }
