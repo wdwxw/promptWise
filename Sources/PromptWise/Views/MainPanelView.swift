@@ -35,6 +35,9 @@ struct MainPanelView: View {
     @State private var promptEditPrompt: Prompt? // 要编辑的提示语（nil 表示新建）
     @State private var promptEditDefaultCategoryId: UUID? // 新建时的默认分类
 
+    // PromptCollectionWindow 管理
+    @State private var collectionWindowController: CollectionWindowController?
+
     private var filteredPrompts: [Prompt] {
         store.searchPrompts(query: searchText, categoryId: selectedCategoryId)
     }
@@ -81,15 +84,34 @@ struct MainPanelView: View {
         .sheet(isPresented: $showingImport) {
             ImportView(store: store)
         }
-        .sheet(isPresented: $showingCollectionManager) {
-            PromptCollectionManagerView(store: store) {
-                showingCollectionManager = false
+        .onChange(of: showingCollectionManager) { newValue in
+            if newValue {
+                showCollectionWindow()
+            } else {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [collectionWindowController] in
+                    collectionWindowController?.close()
+                }
             }
-            .environmentObject(theme)
         }
     }
 
     // MARK: - PromptEditWindow Management
+
+    private func showCollectionWindow() {
+        collectionWindowController?.close()
+
+        let controller = CollectionWindowController(
+            store: store,
+            theme: theme,
+            onDismiss: { [self] in
+                DispatchQueue.main.async {
+                    self.showingCollectionManager = false
+                }
+            }
+        )
+        collectionWindowController = controller
+        controller.showWindow()
+    }
 
     private func showPromptEditWindow(prompt: Prompt?, defaultCategoryId: UUID?) {
         // 关闭之前的窗口
@@ -138,7 +160,11 @@ struct MainPanelView: View {
             Spacer()
 
             headerButton(icon: "plus", label: "新建") {
-                showingAddPrompt = true
+                if showingAddPrompt {
+                    promptEditWindowController?.showWindow()
+                } else {
+                    showingAddPrompt = true
+                }
             }
 
             Menu {
@@ -188,7 +214,13 @@ struct MainPanelView: View {
     /// 集合入口胶囊按钮（固定在分类栏右侧）
     private var collectionButton: some View {
         ZStack(alignment: .topTrailing) {
-            Button(action: { showingCollectionManager = true }) {
+            Button(action: {
+                if showingCollectionManager {
+                    collectionWindowController?.showWindow()
+                } else {
+                    showingCollectionManager = true
+                }
+            }) {
                 HStack(spacing: 4) {
                     Image(systemName: "rectangle.stack")
                         .font(.system(size: 10))
@@ -333,7 +365,13 @@ struct MainPanelView: View {
                     prompts: filteredPrompts,
                     store: store,
                     copiedPromptId: $copiedPromptId,
-                    onEdit: { editingPrompt = $0 },
+                    onEdit: { prompt in
+                        if editingPrompt == prompt {
+                            promptEditWindowController?.showWindow()
+                        } else {
+                            editingPrompt = prompt
+                        }
+                    },
                     onCopy: copyPrompt,
                     onExternalDrop: { store.recordUsage(id: $0.id) }
                 )
@@ -342,7 +380,13 @@ struct MainPanelView: View {
                     prompts: filteredPrompts,
                     store: store,
                     copiedPromptId: $copiedPromptId,
-                    onEdit: { editingPrompt = $0 },
+                    onEdit: { prompt in
+                        if editingPrompt == prompt {
+                            promptEditWindowController?.showWindow()
+                        } else {
+                            editingPrompt = prompt
+                        }
+                    },
                     onCopy: copyPrompt,
                     onExternalDrop: { store.recordUsage(id: $0.id) }
                 )
@@ -360,7 +404,13 @@ struct MainPanelView: View {
                 .font(.system(size: 13))
                 .foregroundStyle(theme.textTertiary)
             if searchText.isEmpty {
-                Button(action: { showingAddPrompt = true }) {
+                Button(action: {
+                    if showingAddPrompt {
+                        promptEditWindowController?.showWindow()
+                    } else {
+                        showingAddPrompt = true
+                    }
+                }) {
                     Text("＋ 新建")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(theme.accentSubtle)
@@ -464,41 +514,10 @@ struct CategoryChip: View {
 
 // MARK: - DraggableWindow
 
-/// 支持拖动的窗口，类似 FloatingIconWindow 的实现方式
+/// 支持拖动的窗口
 final class DraggableWindow: NSPanel {
-    private var isDragging = false
-    private var dragStartLocation: NSPoint = .zero
-    private var windowStartOrigin: NSPoint = .zero
-
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
-
-    // Intercept mouse events for window dragging
-    override func sendEvent(_ event: NSEvent) {
-        switch event.type {
-        case .leftMouseDown:
-            isDragging = false
-            dragStartLocation = NSEvent.mouseLocation
-            windowStartOrigin = self.frame.origin
-        case .leftMouseDragged:
-            let current = NSEvent.mouseLocation
-            let dx = current.x - dragStartLocation.x
-            let dy = current.y - dragStartLocation.y
-            if !isDragging && (abs(dx) > 2 || abs(dy) > 2) {
-                isDragging = true
-            }
-            if isDragging {
-                self.setFrameOrigin(NSPoint(
-                    x: windowStartOrigin.x + dx,
-                    y: windowStartOrigin.y + dy
-                ))
-            }
-        case .leftMouseUp:
-            isDragging = false
-        default:
-            super.sendEvent(event)
-        }
-    }
 }
 
 // MARK: - PromptEditWindowController
@@ -514,15 +533,19 @@ final class PromptEditWindowController: NSObject, NSWindowDelegate {
         // 创建支持拖动的窗口
         window = DraggableWindow(
             contentRect: NSRect(x: 0, y: 0, width: 480, height: 520),
-            styleMask: [.titled, .closable, .miniaturizable],
+            styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
+        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
+        window.isMovableByWindowBackground = true
 
         super.init()
 
         window.title = prompt == nil ? "新增提示语" : "编辑提示语"
         window.level = .floating
+        window.hidesOnDeactivate = false
         window.delegate = self
         window.center()
 
@@ -537,6 +560,64 @@ final class PromptEditWindowController: NSObject, NSWindowDelegate {
         )
 
         let containerView = AnyView(promptEditView)
+        let hosting = NSHostingView(rootView: containerView)
+        hostingView = hosting
+        window.contentView = hosting
+    }
+
+    func showWindow() {
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    func close() {
+        window.close()
+    }
+
+    // MARK: - NSWindowDelegate
+
+    func windowWillClose(_ notification: Notification) {
+        // 窗口关闭时调用 onDismiss
+        onDismiss()
+    }
+}
+
+// MARK: - CollectionWindowController
+
+final class CollectionWindowController: NSObject, NSWindowDelegate {
+    private let window: DraggableWindow
+    private let onDismiss: () -> Void
+    private weak var hostingView: NSHostingView<AnyView>?
+
+    init(store: PromptStore, theme: ThemeManager, onDismiss: @escaping () -> Void) {
+        self.onDismiss = onDismiss
+
+        // 创建支持拖动的窗口
+        window = DraggableWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 360, height: 400),
+            styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
+            backing: .buffered,
+            defer: false
+        )
+        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
+        window.isMovableByWindowBackground = true
+
+        super.init()
+
+        window.title = "提示语集合"
+        window.level = .floating
+        window.hidesOnDeactivate = false
+        window.delegate = self
+        window.center()
+
+        // 创建 PromptCollectionManagerView 并包装以便关闭
+        let view = PromptCollectionManagerView(store: store, onDismiss: { [weak self] in
+            self?.window.close()
+        })
+        .environmentObject(theme)
+
+        let containerView = AnyView(view)
         let hosting = NSHostingView(rootView: containerView)
         hostingView = hosting
         window.contentView = hosting

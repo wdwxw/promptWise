@@ -198,16 +198,6 @@ private struct CollectionManagerRow: View {
                             .clipShape(RoundedRectangle(cornerRadius: 4))
                     }
                     .buttonStyle(.plain)
-                    .confirmationDialog(
-                        "删除「\(collection.title)」？",
-                        isPresented: $showDeleteConfirm,
-                        titleVisibility: .visible
-                    ) {
-                        Button("删除", role: .destructive) { onDelete() }
-                        Button("取消", role: .cancel) {}
-                    } message: {
-                        Text("此操作不可撤销。")
-                    }
                 }
                 .transition(.opacity.animation(.easeInOut(duration: 0.1)))
             }
@@ -223,5 +213,15 @@ private struct CollectionManagerRow: View {
                 .strokeBorder(theme.border, lineWidth: isHovered ? 1 : 0)
         )
         .onHover { isHovered = $0 }
+        .confirmationDialog(
+            "删除「\(collection.title)」？",
+            isPresented: $showDeleteConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("删除", role: .destructive) { onDelete() }
+            Button("取消", role: .cancel) {}
+        } message: {
+            Text("此操作不可撤销。")
+        }
     }
 }
