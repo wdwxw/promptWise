@@ -235,7 +235,8 @@ struct MainPanelView: View {
                     store: store,
                     copiedPromptId: $copiedPromptId,
                     onEdit: { editingPrompt = $0 },
-                    onCopy: copyPrompt
+                    onCopy: copyPrompt,
+                    onExternalDrop: { store.recordUsage(id: $0.id) }
                 )
             case .grid:
                 PromptGridView(
@@ -243,7 +244,8 @@ struct MainPanelView: View {
                     store: store,
                     copiedPromptId: $copiedPromptId,
                     onEdit: { editingPrompt = $0 },
-                    onCopy: copyPrompt
+                    onCopy: copyPrompt,
+                    onExternalDrop: { store.recordUsage(id: $0.id) }
                 )
             }
         }
@@ -290,6 +292,7 @@ struct MainPanelView: View {
     }
 
     private func copyPrompt(_ prompt: Prompt) {
+        store.recordUsage(id: prompt.id)
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(prompt.content, forType: .string)
 
