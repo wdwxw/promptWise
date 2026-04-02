@@ -153,11 +153,23 @@ struct PromptEditView: View {
 
             Spacer()
 
+            Text("⌘↩")
+                .font(.system(size: 11))
+                .foregroundStyle(.tertiary)
+                .padding(.trailing, 4)
+
             Button(isEditing ? "保存" : "添加") {
                 savePrompt()
             }
             .keyboardShortcut(.defaultAction)
             .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
+
+            // ⌘↩ 快速提交：零尺寸隐藏按钮，仅绑定快捷键
+            Button("") { savePrompt() }
+                .keyboardShortcut(.return, modifiers: [.command])
+                .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
+                .opacity(0)
+                .frame(width: 0, height: 0)
         }
         .padding(16)
     }

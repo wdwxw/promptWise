@@ -149,4 +149,12 @@ final class ThemeManager: ObservableObject {
     var accentSubtle: Color {
         Color(nsColor: NSColor(red: 0.655, green: 0.545, blue: 0.980, alpha: 1))
     }
+
+    // MARK: - Icon on Surface (#cccccc / #555555) — for buttons/icons on surface background
+
+    var iconOnSurface: Color {
+        mode == .dark
+            ? Color(nsColor: NSColor(red: 0.8, green: 0.8, blue: 0.8, alpha: 1))
+            : Color(nsColor: NSColor(red: 0.333, green: 0.333, blue: 0.333, alpha: 1))
+    }
 }

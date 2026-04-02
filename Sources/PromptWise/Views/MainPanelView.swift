@@ -49,6 +49,7 @@ struct MainPanelView: View {
             RoundedRectangle(cornerRadius: 10)
                 .strokeBorder(theme.border, lineWidth: 1)
         )
+        .environment(\.colorScheme, theme.mode == .dark ? .dark : .light)
         .sheet(isPresented: $showingAddPrompt) {
             PromptEditView(store: store, prompt: nil, defaultCategoryId: selectedCategoryId)
         }
@@ -80,7 +81,7 @@ struct MainPanelView: View {
 
             Text("\(store.prompts.count)")
                 .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(theme.textTertiary)
+                .foregroundStyle(theme.iconOnSurface)
                 .padding(.horizontal, 5)
                 .padding(.vertical, 1)
                 .background(theme.surfaceBg)
@@ -112,7 +113,7 @@ struct MainPanelView: View {
             } label: {
                 Image(systemName: "gearshape")
                     .font(.system(size: 11))
-                    .foregroundStyle(theme.textTertiary)
+                    .foregroundStyle(theme.iconOnSurface)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
                     .background(theme.surfaceBg)
@@ -125,7 +126,7 @@ struct MainPanelView: View {
             Button(action: onClose) {
                 Image(systemName: "xmark")
                     .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(theme.textTertiary)
+                    .foregroundStyle(theme.iconOnSurface)
                     .frame(width: 20, height: 20)
                     .background(theme.surfaceBg)
                     .clipShape(RoundedRectangle(cornerRadius: 4))
@@ -146,7 +147,7 @@ struct MainPanelView: View {
                         .font(.system(size: 11, weight: .medium))
                 }
             }
-            .foregroundStyle(theme.textTertiary)
+            .foregroundStyle(theme.iconOnSurface)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
             .background(theme.surfaceBg)
@@ -187,7 +188,7 @@ struct MainPanelView: View {
         HStack(spacing: 8) {
             HStack(spacing: 6) {
                 Image(systemName: "magnifyingglass")
-                    .foregroundStyle(theme.textTertiary)
+                    .foregroundStyle(theme.textPrimary)
                     .font(.system(size: 11))
 
                 TextField("搜索...", text: $searchText)
@@ -198,7 +199,7 @@ struct MainPanelView: View {
                 if !searchText.isEmpty {
                     Button(action: { searchText = "" }) {
                         Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(theme.textTertiary)
+                            .foregroundStyle(theme.textPrimary)
                             .font(.system(size: 10))
                     }
                     .buttonStyle(.plain)
@@ -213,13 +214,8 @@ struct MainPanelView: View {
                     .strokeBorder(theme.border, lineWidth: 1)
             )
 
-            Picker("", selection: $viewMode) {
-                ForEach(ViewMode.allCases, id: \.self) { mode in
-                    Image(systemName: mode.icon).tag(mode)
-                }
-            }
-            .pickerStyle(.segmented)
-            .frame(width: 64)
+            CustomSegmentedControl(selection: $viewMode)
+                .frame(width: 64)
         }
         .padding(.horizontal, 14)
         .padding(.bottom, 8)
@@ -307,6 +303,32 @@ struct MainPanelView: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Custom Segmented Control
+
+struct CustomSegmentedControl: View {
+    @EnvironmentObject var theme: ThemeManager
+    @Binding var selection: ViewMode
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(ViewMode.allCases, id: \.self) { mode in
+                Button(action: { selection = mode }) {
+                    Image(systemName: mode.icon)
+                        .font(.system(size: 11))
+                        .foregroundStyle(selection == mode ? theme.textPrimary : theme.textSecondary)
+                        .frame(width: 28, height: 24)
+                        .background(selection == mode ? theme.surfaceBg : Color.clear)
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(2)
+        .background(theme.border)
+        .clipShape(RoundedRectangle(cornerRadius: 6))
     }
 }
 
