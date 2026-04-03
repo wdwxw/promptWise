@@ -83,6 +83,7 @@ struct PromptCollectionCreatorView: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
+        .background(WindowDragArea())
     }
 
     @ViewBuilder
@@ -149,7 +150,12 @@ struct PromptCollectionCreatorView: View {
                         ForEach(store.prompts) { prompt in
                             LeftPanelPromptRow(
                                 prompt: prompt,
-                                isAdded: selectedIds.contains(prompt.id)
+                                isAdded: selectedIds.contains(prompt.id),
+                                onAdd: {
+                                    if !selectedIds.contains(prompt.id) {
+                                        selectedIds.append(prompt.id)
+                                    }
+                                }
                             )
                             .onDrag {
                                 NSItemProvider(object: prompt.id.uuidString as NSString)
@@ -303,6 +309,7 @@ private struct LeftPanelPromptRow: View {
     @EnvironmentObject var theme: ThemeManager
     let prompt: Prompt
     let isAdded: Bool
+    let onAdd: () -> Void
 
     @State private var isHovered = false
 
@@ -320,10 +327,17 @@ private struct LeftPanelPromptRow: View {
             Spacer()
 
             if isHovered {
-                Image(systemName: "arrow.right")
-                    .font(.system(size: 9))
-                    .foregroundStyle(theme.textTertiary)
-                    .transition(.opacity.animation(.easeInOut(duration: 0.1)))
+                Button(action: onAdd) {
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: 9))
+                        .foregroundStyle(isAdded ? theme.textTertiary : theme.accentSubtle)
+                        .frame(width: 20, height: 20)
+                        .background(isAdded ? Color.clear : theme.accent.opacity(0.12))
+                        .clipShape(RoundedRectangle(cornerRadius: 3))
+                }
+                .buttonStyle(.plain)
+                .disabled(isAdded)
+                .transition(.opacity.animation(.easeInOut(duration: 0.1)))
             }
         }
         .padding(.horizontal, 10)

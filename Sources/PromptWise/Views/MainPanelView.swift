@@ -520,6 +520,20 @@ final class DraggableWindow: NSPanel {
     override var canBecomeMain: Bool { false }
 }
 
+// MARK: - WindowDragArea
+
+/// 仅在此区域内可拖动窗口（放置在 headerBar 的 background 上）
+struct WindowDragArea: NSViewRepresentable {
+    func makeNSView(context: Context) -> WindowDragNSView { WindowDragNSView() }
+    func updateNSView(_ nsView: WindowDragNSView, context: Context) {}
+
+    class WindowDragNSView: NSView {
+        override func mouseDown(with event: NSEvent) {
+            window?.performDrag(with: event)
+        }
+    }
+}
+
 // MARK: - PromptEditWindowController
 
 final class PromptEditWindowController: NSObject, NSWindowDelegate {
@@ -539,7 +553,7 @@ final class PromptEditWindowController: NSObject, NSWindowDelegate {
         )
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
-        window.isMovableByWindowBackground = true
+        window.isMovableByWindowBackground = false
 
         super.init()
 
@@ -601,7 +615,7 @@ final class CollectionWindowController: NSObject, NSWindowDelegate {
         )
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
-        window.isMovableByWindowBackground = true
+        window.isMovableByWindowBackground = false
 
         super.init()
 

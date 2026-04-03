@@ -69,6 +69,7 @@ struct PromptEditView: View {
             .buttonStyle(.plain)
         }
         .padding(16)
+        .background(WindowDragArea())
     }
 
     // MARK: - Form

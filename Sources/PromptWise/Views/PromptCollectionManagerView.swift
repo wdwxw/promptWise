@@ -99,6 +99,7 @@ struct PromptCollectionManagerView: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
+        .background(WindowDragArea())
     }
 
     private var divider: some View {
