@@ -154,7 +154,7 @@ struct QuickAccessView: View {
     }
 }
 
-// MARK: - Collection Quick Item（橙色胶囊）
+// MARK: - Collection Quick Item（深紫浆果胶囊）
 
 private struct CollectionQuickItemView: View {
     let collection: PromptCollection
@@ -168,29 +168,47 @@ private struct CollectionQuickItemView: View {
 
     private var isDark: Bool { theme.mode == .dark }
 
+    // 深紫浆果色系 (Style 3)
+    private var berryPurple: Color {
+        Color(red: 147/255, green: 51/255, blue: 234/255)
+    }
+
     private var includedPrompts: [Prompt] {
         collection.promptIds.compactMap { id in allPrompts.first { $0.id == id } }
     }
 
     private var backgroundColor: Color {
         if isHovered {
-            return Color.orange.opacity(0.72)
+            return berryPurple.opacity(0.7)
         }
         return isDark
-            ? Color.orange.opacity(0.28)
-            : Color.orange.opacity(0.18)
+            ? Color(red: 88/255, green: 28/255, blue: 135/255).opacity(0.5)
+            : berryPurple.opacity(0.12)
     }
 
     private var titleColor: Color {
         if isHovered { return .white }
-        return isDark ? Color.orange.opacity(0.9) : Color.orange.opacity(0.85)
+        return isDark
+            ? Color(red: 216/255, green: 180/255, blue: 254/255).opacity(0.95)
+            : berryPurple.opacity(0.85)
+    }
+
+    private var iconColor: Color {
+        if isHovered { return .white.opacity(0.95) }
+        return isDark
+            ? Color(red: 216/255, green: 180/255, blue: 254/255).opacity(0.8)
+            : berryPurple.opacity(0.7)
+    }
+
+    private var shadowColor: Color {
+        berryPurple.opacity(isDark ? 0.25 : 0.12)
     }
 
     var body: some View {
         HStack(spacing: 6) {
             Image(systemName: "rectangle.stack.fill")
                 .font(.system(size: 10))
-                .foregroundStyle(isHovered ? .white.opacity(0.9) : Color.orange.opacity(0.75))
+                .foregroundStyle(iconColor)
 
             Text(collection.title)
                 .font(.system(size: 11))
@@ -213,7 +231,7 @@ private struct CollectionQuickItemView: View {
             Capsule()
                 .fill(backgroundColor)
         )
-        .shadow(color: Color.orange.opacity(isDark ? 0.12 : 0.08), radius: 2, y: 1)
+        .shadow(color: shadowColor, radius: 2, y: 1)
         .offset(x: isHovered ? 4 : 0)
         .contentShape(Capsule())
         .onTapGesture { onCopy() }
