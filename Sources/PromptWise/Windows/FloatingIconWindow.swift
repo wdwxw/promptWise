@@ -2,6 +2,17 @@ import AppKit
 import SwiftUI
 
 final class FloatingIconWindow: NSPanel {
+    private enum Layout {
+        static let windowSize: CGFloat = 96
+        static let centerIconSize: CGFloat = 50
+        static let orbitDiameter: CGFloat = 80
+        static let orbitRadius: CGFloat = orbitDiameter / 2
+        static let clusterAngle: CGFloat = 136
+        static let gapAngle: CGFloat = 30
+        static let themeIconSize: CGFloat = 18
+        static let themeTapRadius: CGFloat = 12
+    }
+
     var onClick: (() -> Void)?
     var onHoverChanged: ((Bool) -> Void)?
     var onPositionChanged: (() -> Void)?
@@ -13,7 +24,7 @@ final class FloatingIconWindow: NSPanel {
 
     init() {
         super.init(
-            contentRect: NSRect(x: 0, y: 0, width: 56, height: 56),
+            contentRect: NSRect(x: 0, y: 0, width: Layout.windowSize, height: Layout.windowSize),
             styleMask: [.nonactivatingPanel, .borderless],
             backing: .buffered,
             defer: false
@@ -31,8 +42,8 @@ final class FloatingIconWindow: NSPanel {
             onHoverChanged: { [weak self] hovering in
                 self?.onHoverChanged?(hovering)
             }
-        ))
-        hostingView.frame = NSRect(x: 0, y: 0, width: 56, height: 56)
+        ).environmentObject(ThemeManager.shared))
+        hostingView.frame = NSRect(x: 0, y: 0, width: Layout.windowSize, height: Layout.windowSize)
         hostingView.wantsLayer = true
         hostingView.layer?.backgroundColor = .clear
         self.contentView = hostingView
@@ -43,9 +54,36 @@ final class FloatingIconWindow: NSPanel {
     private func positionAtDefaultLocation() {
         guard let screen = NSScreen.main else { return }
         let screenFrame = screen.visibleFrame
-        let x = screenFrame.maxX - 80
+        let x = screenFrame.maxX - Layout.windowSize - 24
         let y = screenFrame.midY
         self.setFrameOrigin(NSPoint(x: x, y: y))
+    }
+
+    private func orbitPointYDown(angle: CGFloat) -> CGPoint {
+        let radians = angle * .pi / 180
+        let center = Layout.windowSize / 2
+        let x = center + sin(radians) * Layout.orbitRadius
+        let y = center - cos(radians) * Layout.orbitRadius
+        return CGPoint(x: x, y: y)
+    }
+
+    private func hitTestThemeMode(at pointInWindow: NSPoint) -> ThemeMode? {
+        let yDown = Layout.windowSize - pointInWindow.y
+        let sunAngle = Layout.clusterAngle - (Layout.gapAngle / 2)
+        let moonAngle = Layout.clusterAngle + (Layout.gapAngle / 2)
+        let targets: [(ThemeMode, CGPoint)] = [
+            (.light, orbitPointYDown(angle: sunAngle)),
+            (.dark, orbitPointYDown(angle: moonAngle))
+        ]
+
+        for (mode, center) in targets {
+            let dx = pointInWindow.x - center.x
+            let dy = yDown - center.y
+            if sqrt(dx * dx + dy * dy) <= Layout.themeTapRadius {
+                return mode
+            }
+        }
+        return nil
     }
 
     // 返回 false 防止点击/拖动悬浮图标时抢夺外部应用的 Key Window 焦点
@@ -76,6 +114,10 @@ final class FloatingIconWindow: NSPanel {
             }
         case .leftMouseUp:
             if !isDragging {
+                if let mode = hitTestThemeMode(at: event.locationInWindow) {
+                    ThemeManager.shared.mode = mode
+                    break
+                }
                 onClick?()
             } else {
                 onDragEnded?()
@@ -90,11 +132,42 @@ final class FloatingIconWindow: NSPanel {
 // MARK: - SwiftUI Visual Content
 
 private struct FloatingIconContent: View {
+    private enum Layout {
+        static let windowSize: CGFloat = 96
+        static let centerIconSize: CGFloat = 50
+        static let orbitDiameter: CGFloat = 80
+        static let orbitRadius: CGFloat = orbitDiameter / 2
+        static let clusterAngle: CGFloat = 136
+        static let gapAngle: CGFloat = 30
+        static let themeIconSize: CGFloat = 18
+    }
+
     var onHoverChanged: ((Bool) -> Void)?
     @State private var isHovered = false
+    @EnvironmentObject private var theme: ThemeManager
+
+    private func orbitPoint(angle: CGFloat) -> CGPoint {
+        let radians = angle * .pi / 180
+        let center = Layout.windowSize / 2
+        let x = center + sin(radians) * Layout.orbitRadius
+        let y = center - cos(radians) * Layout.orbitRadius
+        return CGPoint(x: x, y: y)
+    }
+
+    private var sunPoint: CGPoint {
+        orbitPoint(angle: Layout.clusterAngle - (Layout.gapAngle / 2))
+    }
+
+    private var moonPoint: CGPoint {
+        orbitPoint(angle: Layout.clusterAngle + (Layout.gapAngle / 2))
+    }
 
     var body: some View {
         ZStack {
+            Circle()
+                .fill(Color.black.opacity(0.001))
+                .frame(width: Layout.windowSize, height: Layout.windowSize)
+
             Circle()
                 .fill(
                     LinearGradient(
@@ -107,14 +180,30 @@ private struct FloatingIconContent: View {
                     )
                 )
                 .shadow(color: .black.opacity(0.3), radius: isHovered ? 8 : 4, y: 2)
+                .frame(width: Layout.centerIconSize, height: Layout.centerIconSize)
+                .position(x: Layout.windowSize / 2, y: Layout.windowSize / 2)
 
             Image(systemName: "text.bubble.fill")
                 .font(.system(size: 22, weight: .medium))
                 .foregroundStyle(.white)
+                .position(x: Layout.windowSize / 2, y: Layout.windowSize / 2)
+
+            themeNode(
+                symbol: "sun.max.fill",
+                textSymbol: nil,
+                mode: .light
+            )
+            .position(sunPoint)
+
+            themeNode(
+                symbol: nil,
+                textSymbol: "☾",
+                mode: .dark
+            )
+            .position(moonPoint)
         }
-        .frame(width: 50, height: 50)
-        .clipShape(Circle())
-        .scaleEffect(isHovered ? 1.1 : 1.0)
+        .frame(width: Layout.windowSize, height: Layout.windowSize)
+        .scaleEffect(isHovered ? 1.04 : 1.0)
         .animation(.spring(response: 0.3), value: isHovered)
         .onHover { hovering in
             isHovered = hovering
@@ -125,6 +214,57 @@ private struct FloatingIconContent: View {
                 NSCursor.pop()
             }
         }
-        .frame(width: 56, height: 56)
+    }
+
+    @ViewBuilder
+    private func themeNode(symbol: String?, textSymbol: String?, mode: ThemeMode) -> some View {
+        let isActive = theme.mode == mode
+        let sunFill = Color(red: 0.96, green: 0.62, blue: 0.04)
+        let moonFill = Color(red: 0.15, green: 0.39, blue: 0.92)
+        let activeGlow = mode == .light
+            ? Color(red: 0.98, green: 0.79, blue: 0.26)
+            : Color(red: 0.45, green: 0.67, blue: 0.98)
+
+        ZStack {
+            Circle()
+                .fill(
+                    mode == .light
+                        ? sunFill.opacity(isActive ? 1.0 : 0.30)
+                        : moonFill.opacity(isActive ? 1.0 : 0.30)
+                )
+                .overlay(
+                    Circle()
+                        .stroke(Color.white.opacity(isActive ? 0.88 : 0.30), lineWidth: isActive ? 1.1 : 0.9)
+                )
+                .shadow(
+                    color: isActive ? activeGlow.opacity(0.62) : .clear,
+                    radius: isActive ? 8 : 0
+                )
+                .shadow(
+                    color: isActive ? activeGlow.opacity(0.42) : .clear,
+                    radius: isActive ? 3 : 0
+                )
+
+            if let symbol {
+                Image(systemName: symbol)
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(
+                        isActive
+                            ? Color(red: 1.0, green: 0.98, blue: 0.90)
+                            : Color(red: 1.0, green: 0.95, blue: 0.64)
+                    )
+            }
+
+            if let textSymbol {
+                Text(textSymbol)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(
+                        isActive
+                            ? Color(red: 0.97, green: 0.99, blue: 1.0)
+                            : Color(red: 0.76, green: 0.88, blue: 1.0)
+                    )
+            }
+        }
+        .frame(width: Layout.themeIconSize, height: Layout.themeIconSize)
     }
 }
