@@ -1,4 +1,5 @@
 import SwiftUI
+import Carbon.HIToolbox
 
 enum ThemeMode: String, CaseIterable, Identifiable {
     case dark = "dark"
@@ -70,6 +71,21 @@ final class ThemeManager: ObservableObject {
         didSet { UserDefaults.standard.set(dataAddPosition.rawValue, forKey: "dataAddPosition") }
     }
 
+    /// 全局快捷键 - keyCode（-1 表示未设置）
+    @Published var globalHotKeyCode: Int {
+        didSet { UserDefaults.standard.set(globalHotKeyCode, forKey: "globalHotKeyCode") }
+    }
+
+    /// 全局快捷键 - 修饰键（CGEventFlags rawValue）
+    @Published var globalHotKeyModifiers: UInt64 {
+        didSet { UserDefaults.standard.set(globalHotKeyModifiers, forKey: "globalHotKeyModifiers") }
+    }
+
+    /// 全局快捷键是否启用
+    @Published var globalHotKeyEnabled: Bool {
+        didSet { UserDefaults.standard.set(globalHotKeyEnabled, forKey: "globalHotKeyEnabled") }
+    }
+
     static let dismissDelayOptions: [Double] = [0.5, 1, 2, 3, 5, 8, 10]
     static let itemCountOptions: [Int] = [5, 10, 15, 20, 30, 50]
 
@@ -88,6 +104,14 @@ final class ThemeManager: ObservableObject {
         }
         let savedPosition = UserDefaults.standard.string(forKey: "dataAddPosition") ?? "bottom"
         self.dataAddPosition = DataAddPosition(rawValue: savedPosition) ?? .bottom
+
+        // 全局快捷键配置（默认：Control+Option+Space）
+        let savedKeyCode = UserDefaults.standard.object(forKey: "globalHotKeyCode") as? Int
+        self.globalHotKeyCode = savedKeyCode ?? 49  // 49 = Space
+        let savedModifiers = UserDefaults.standard.object(forKey: "globalHotKeyModifiers") as? UInt64
+        // 默认修饰键：Control + Option
+        self.globalHotKeyModifiers = savedModifiers ?? (CGEventFlags.maskControl.rawValue | CGEventFlags.maskAlternate.rawValue)
+        self.globalHotKeyEnabled = UserDefaults.standard.object(forKey: "globalHotKeyEnabled") as? Bool ?? true
     }
 
     // MARK: - Panel Background (#1e1e1e / #ffffff)

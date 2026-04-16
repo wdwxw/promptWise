@@ -98,6 +98,10 @@ printf '<?xml version="1.0" encoding="UTF-8"?>
 
 log_ok "App Bundle 创建完成：${APP_BUNDLE}"
 
+log_step "启动应用：${APP_BUNDLE}"
+open "${APP_BUNDLE}"
+log_ok "应用已启动"
+
 echo ""
 echo -e "${GREEN}${BOLD}完成！${RESET}"
 echo ""

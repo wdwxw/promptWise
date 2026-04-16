@@ -1,8 +1,10 @@
 import SwiftUI
+import AppKit
 
 struct SettingsView: View {
     @EnvironmentObject var theme: ThemeManager
     @ObservedObject var store: PromptStore
+    @ObservedObject var hotKeyManager = HotKeyManager.shared
     @State private var showingStats = false
 
     var body: some View {
@@ -106,6 +108,72 @@ struct SettingsView: View {
                 Divider()
 
                 HStack(alignment: .top, spacing: 12) {
+                    Text("全局快捷键：")
+                        .font(.system(size: 13))
+                        .frame(width: 70, alignment: .trailing)
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Toggle("启用全局快捷键", isOn: $theme.globalHotKeyEnabled)
+                            .toggleStyle(.switch)
+                            .controlSize(.small)
+                            .onChange(of: theme.globalHotKeyEnabled) { enabled in
+                                // 先更新缓存，确保 EventTap 读取到最新配置
+                                HotKeyManager.shared.updateCache()
+                                if enabled {
+                                    HotKeyManager.shared.start()
+                                } else {
+                                    HotKeyManager.shared.stop()
+                                }
+                            }
+
+                        if theme.globalHotKeyEnabled {
+                            HStack(spacing: 6) {
+                                Text("呼出快捷键")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(.secondary)
+
+                                HotKeyRecorderView()
+                            }
+
+                            HStack(spacing: 6) {
+                                Text("辅助功能")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(.secondary)
+
+                                if hotKeyManager.isAccessibilityGranted {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundStyle(.green)
+                                        Text("已授权")
+                                            .font(.system(size: 12))
+                                            .foregroundStyle(.secondary)
+                                    }
+                                } else {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "exclamationmark.triangle.fill")
+                                            .foregroundStyle(.orange)
+                                        Text("需要授权")
+                                            .font(.system(size: 12))
+                                            .foregroundStyle(.secondary)
+
+                                        Button("去授权") {
+                                            hotKeyManager.openAccessibilitySettings()
+                                        }
+                                        .controlSize(.small)
+                                    }
+                                }
+                            }
+
+                            Text("快捷键可在任意应用中呼出悬浮图标")
+                                .font(.system(size: 11))
+                                .foregroundStyle(theme.textTertiary)
+                        }
+                    }
+                }
+
+                Divider()
+
+                HStack(alignment: .top, spacing: 12) {
                     Text("数据统计：")
                         .font(.system(size: 13))
                         .frame(width: 70, alignment: .trailing)
@@ -131,6 +199,18 @@ struct SettingsView: View {
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .padding(.bottom, 10)
+        }
+        .onAppear {
+            _ = hotKeyManager.checkAccessibilityPermission()
+            if theme.globalHotKeyEnabled {
+                hotKeyManager.start()
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            _ = hotKeyManager.checkAccessibilityPermission()
+            if theme.globalHotKeyEnabled {
+                hotKeyManager.start()
+            }
         }
     }
 }

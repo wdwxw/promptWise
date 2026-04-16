@@ -59,6 +59,30 @@ final class FloatingIconWindow: NSPanel {
         self.setFrameOrigin(NSPoint(x: x, y: y))
     }
 
+    /// 将悬浮图标移动到指定位置（居中于该点）
+    func positionAt(_ point: NSPoint) {
+        let x = point.x - Layout.windowSize / 2
+        let y = point.y - Layout.windowSize / 2
+
+        // 确保不超出屏幕边界
+        var finalX = x
+        var finalY = y
+
+        if let screen = NSScreen.main {
+            let screenFrame = screen.visibleFrame
+            finalX = max(screenFrame.minX, min(finalX, screenFrame.maxX - Layout.windowSize))
+            finalY = max(screenFrame.minY, min(finalY, screenFrame.maxY - Layout.windowSize))
+        }
+
+        self.setFrameOrigin(NSPoint(x: finalX, y: finalY))
+    }
+
+    /// 将悬浮图标移动到当前鼠标位置
+    func positionAtMouseLocation() {
+        let mouseLocation = NSEvent.mouseLocation
+        positionAt(mouseLocation)
+    }
+
     private func orbitPointYDown(angle: CGFloat) -> CGPoint {
         let radians = angle * .pi / 180
         let center = Layout.windowSize / 2

@@ -16,6 +16,9 @@ final class SettingsWindow: NSWindow {
         self.hidesOnDeactivate = false
         self.center()
 
+        // 强制浅色外观，不受 app 主题影响
+        self.appearance = NSAppearance(named: .aqua)
+
         let hostingView = NSHostingView(rootView: contentView)
         self.contentView = hostingView
     }

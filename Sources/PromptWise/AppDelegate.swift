@@ -31,6 +31,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
+        setupGlobalHotKey()
+
         // 监听新窗口（如 Sheet）出现，防止与悬浮图标重叠
         // 同时监听 didBecomeKey 和 didOrderOnScreen 两个事件，提高捕获率
         for notifName in [NSWindow.didBecomeKeyNotification, NSWindow.didBecomeMainNotification] {
@@ -175,6 +177,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func quitApp() {
         NSApplication.shared.terminate(nil)
+    }
+
+    // MARK: - Global HotKey
+
+    private func setupGlobalHotKey() {
+        HotKeyManager.shared.onHotKeyTriggered = { [weak self] in
+            self?.toggleFloatingIconAtMouse()
+        }
+
+        if ThemeManager.shared.globalHotKeyEnabled {
+            // 先更新缓存，确保 EventTap 回调读取到最新配置
+            HotKeyManager.shared.updateCache()
+            HotKeyManager.shared.start()
+        }
+    }
+
+    /// 全局快捷键触发：隐藏 <-> 在鼠标位置显示
+    private func toggleFloatingIconAtMouse() {
+        if floatingIconWindow.isVisible {
+            floatingIconWindow.orderOut(nil)
+            quickAccessWindow.orderOut(nil)
+            mainPanelWindow.orderOut(nil)
+            quickAccessDismissWork?.cancel()
+            quickAccessDismissWork = nil
+        } else {
+            floatingIconWindow.positionAtMouseLocation()
+            floatingIconWindow.makeKeyAndOrderFront(nil)
+        }
     }
 
     // MARK: - Sheet Overlap Prevention
