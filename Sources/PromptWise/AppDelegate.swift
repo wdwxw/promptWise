@@ -7,6 +7,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var mainPanelWindow: MainPanelWindow!
     private var settingsWindow: SettingsWindow!
     private var quickAccessWindow: QuickAccessWindow!
+    private var promptInputWindow: PromptInputWindow!
     private var quickAccessDismissWork: DispatchWorkItem?
     private var iconHovered = false
     private var qaHovered = false
@@ -21,6 +22,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         setupMainPanel()
         setupQuickAccess()
         setupSettingsWindow()
+        setupPromptInputWindow()
         setupMenuBarItem()
 
         NotificationCenter.default.addObserver(
@@ -47,13 +49,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
-        floatingIconWindow.makeKeyAndOrderFront(nil)
+        showFloatingIcon(forceNearMouse: false)
     }
 
     private func setupFloatingIcon() {
         floatingIconWindow = FloatingIconWindow()
         floatingIconWindow.onClick = { [weak self] in
             self?.toggleMainPanel()
+        }
+        floatingIconWindow.onPromptInputClick = { [weak self] in
+            self?.togglePromptInputWindow()
         }
         floatingIconWindow.onHoverChanged = { [weak self] hovering in
             self?.iconHovered = hovering
@@ -100,6 +105,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         settingsWindow = SettingsWindow(contentView: settingsView)
     }
 
+    private func setupPromptInputWindow() {
+        let inputView = PromptInputView()
+            .environmentObject(ThemeManager.shared)
+        promptInputWindow = PromptInputWindow(contentView: inputView)
+
+        // 监听追加内容通知（由 QuickAccessView 双击发送）
+        NotificationCenter.default.addObserver(
+            forName: .appendToPromptInput,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            Task { @MainActor in
+                guard let content = notification.userInfo?["content"] as? String,
+                      let window = self?.promptInputWindow,
+                      window.isVisible else { return }
+
+                // 转发给 PromptInputView
+                NotificationCenter.default.post(
+                    name: .doAppendToPromptInput,
+                    object: nil,
+                    userInfo: ["content": content]
+                )
+            }
+        }
+    }
+
     private var statusItem: NSStatusItem?
 
     private func setupMenuBarItem() {
@@ -115,7 +146,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let menu = NSMenu()
         menu.addItem(withTitle: "显示/隐藏面板", action: #selector(toggleMainPanel), keyEquivalent: "p")
-        menu.addItem(withTitle: "显示/隐藏悬浮图标", action: #selector(toggleFloatingIcon), keyEquivalent: "f")
+        menu.addItem(withTitle: "显示/隐藏悬浮球", action: #selector(toggleFloatingIcon), keyEquivalent: "f")
         menu.addItem(NSMenuItem.separator())
         menu.addItem(withTitle: "偏好设置...", action: #selector(openPreferences), keyEquivalent: ",")
         menu.addItem(NSMenuItem.separator())
@@ -167,7 +198,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if floatingIconWindow.isVisible {
             floatingIconWindow.orderOut(nil)
         } else {
-            floatingIconWindow.makeKeyAndOrderFront(nil)
+            showFloatingIcon(forceNearMouse: true)
         }
     }
 
@@ -186,11 +217,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.toggleFloatingIconAtMouse()
         }
 
-        if ThemeManager.shared.globalHotKeyEnabled {
+        // 提示语输入快捷键
+        HotKeyManager.shared.onPromptInputHotKeyTriggered = { [weak self] in
+            self?.togglePromptInputWindow()
+        }
+
+        if ThemeManager.shared.globalHotKeyEnabled || ThemeManager.shared.promptInputHotKeyEnabled {
             // 先更新缓存，确保 EventTap 回调读取到最新配置
             HotKeyManager.shared.updateCache()
             HotKeyManager.shared.start()
         }
+    }
+
+    @objc private func togglePromptInputWindow() {
+        promptInputWindow.toggle()
     }
 
     /// 全局快捷键触发：隐藏 <-> 在鼠标位置显示
@@ -202,9 +242,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             quickAccessDismissWork?.cancel()
             quickAccessDismissWork = nil
         } else {
-            floatingIconWindow.positionAtMouseLocation()
-            floatingIconWindow.makeKeyAndOrderFront(nil)
+            showFloatingIcon(forceNearMouse: true)
         }
+    }
+    
+    /// 显示悬浮图标并确保窗口位于可见屏幕中
+    private func showFloatingIcon(forceNearMouse: Bool) {
+        if forceNearMouse {
+            floatingIconWindow.positionAtMouseLocation()
+        } else {
+            let isOnScreen = NSScreen.screens.contains { screen in
+                screen.visibleFrame.intersects(floatingIconWindow.frame)
+            }
+            if !isOnScreen {
+                floatingIconWindow.positionAtMouseLocation()
+            }
+        }
+        floatingIconWindow.orderFrontRegardless()
     }
 
     // MARK: - Sheet Overlap Prevention
@@ -216,6 +270,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
               window !== mainPanelWindow,
               window !== quickAccessWindow,
               window !== settingsWindow,
+              window !== promptInputWindow,
               window.frame.width > 100
         else { return }
 

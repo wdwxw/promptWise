@@ -119,7 +119,7 @@ struct SettingsView: View {
                             .onChange(of: theme.globalHotKeyEnabled) { enabled in
                                 // 先更新缓存，确保 EventTap 读取到最新配置
                                 HotKeyManager.shared.updateCache()
-                                if enabled {
+                                if enabled || theme.promptInputHotKeyEnabled {
                                     HotKeyManager.shared.start()
                                 } else {
                                     HotKeyManager.shared.stop()
@@ -174,6 +174,42 @@ struct SettingsView: View {
                 Divider()
 
                 HStack(alignment: .top, spacing: 12) {
+                    Text("输入快捷键：")
+                        .font(.system(size: 13))
+                        .frame(width: 70, alignment: .trailing)
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Toggle("启用提示语输入快捷键", isOn: $theme.promptInputHotKeyEnabled)
+                            .toggleStyle(.switch)
+                            .controlSize(.small)
+                            .onChange(of: theme.promptInputHotKeyEnabled) { enabled in
+                                HotKeyManager.shared.updateCache()
+                                if enabled || theme.globalHotKeyEnabled {
+                                    HotKeyManager.shared.start()
+                                } else {
+                                    HotKeyManager.shared.stop()
+                                }
+                            }
+
+                        if theme.promptInputHotKeyEnabled {
+                            HStack(spacing: 6) {
+                                Text("快捷键")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(.secondary)
+
+                                PromptInputHotKeyRecorderView()
+                            }
+
+                            Text("快捷键可在任意应用中呼出提示语输入框")
+                                .font(.system(size: 11))
+                                .foregroundStyle(theme.textTertiary)
+                        }
+                    }
+                }
+
+                Divider()
+
+                HStack(alignment: .top, spacing: 12) {
                     Text("数据统计：")
                         .font(.system(size: 13))
                         .frame(width: 70, alignment: .trailing)
@@ -202,13 +238,13 @@ struct SettingsView: View {
         }
         .onAppear {
             _ = hotKeyManager.checkAccessibilityPermission()
-            if theme.globalHotKeyEnabled {
+            if theme.globalHotKeyEnabled || theme.promptInputHotKeyEnabled {
                 hotKeyManager.start()
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             _ = hotKeyManager.checkAccessibilityPermission()
-            if theme.globalHotKeyEnabled {
+            if theme.globalHotKeyEnabled || theme.promptInputHotKeyEnabled {
                 hotKeyManager.start()
             }
         }

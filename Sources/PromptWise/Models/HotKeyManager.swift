@@ -15,6 +15,9 @@ final class HotKeyManager: ObservableObject {
     /// 快捷键触发时的回调（主线程调用）
     var onHotKeyTriggered: (() -> Void)?
 
+    /// 提示语输入快捷键触发时的回调（主线程调用）
+    var onPromptInputHotKeyTriggered: (() -> Void)?
+
     // MARK: - 配置缓存（供 nonisolated 的 EventTap 回调直接读取，避免跨线程 sync 死锁）
     // 这些属性只在主线程写，EventTap 回调线程只读
     // nonisolated(unsafe): 我们保证主线程写、EventTap 线程只读的访问模式是安全的
@@ -22,6 +25,11 @@ final class HotKeyManager: ObservableObject {
     nonisolated(unsafe) private var cachedKeyCode: Int = 49
     nonisolated(unsafe) private var cachedModifiers: UInt64 = CGEventFlags.maskControl.rawValue | CGEventFlags.maskAlternate.rawValue
     nonisolated(unsafe) private var cachedEnabled: Bool = true
+
+    // 提示语输入快捷键缓存
+    nonisolated(unsafe) private var cachedPromptInputKeyCode: Int = 34
+    nonisolated(unsafe) private var cachedPromptInputModifiers: UInt64 = CGEventFlags.maskControl.rawValue | CGEventFlags.maskAlternate.rawValue
+    nonisolated(unsafe) private var cachedPromptInputEnabled: Bool = true
 
     private init() {
         _ = checkAccessibilityPermission()
@@ -35,6 +43,10 @@ final class HotKeyManager: ObservableObject {
         cachedKeyCode = ThemeManager.shared.globalHotKeyCode
         cachedModifiers = ThemeManager.shared.globalHotKeyModifiers
         cachedEnabled = ThemeManager.shared.globalHotKeyEnabled
+        // 提示语输入快捷键
+        cachedPromptInputKeyCode = ThemeManager.shared.promptInputHotKeyCode
+        cachedPromptInputModifiers = ThemeManager.shared.promptInputHotKeyModifiers
+        cachedPromptInputEnabled = ThemeManager.shared.promptInputHotKeyEnabled
         cacheLock.unlock()
     }
 
@@ -148,23 +160,32 @@ final class HotKeyManager: ObservableObject {
 
         // 直接读缓存，不碰主线程
         cacheLock.lock()
-        let enabled = cachedEnabled
-        let keyCodeExpected = cachedKeyCode
-        let modifiersExpected = cachedModifiers
+        let floatingEnabled = cachedEnabled
+        let floatingKeyCode = cachedKeyCode
+        let floatingModifiers = cachedModifiers
+        let inputEnabled = cachedPromptInputEnabled
+        let inputKeyCode = cachedPromptInputKeyCode
+        let inputModifiers = cachedPromptInputModifiers
         cacheLock.unlock()
 
-        guard enabled, keyCodeExpected >= 0 else {
-            return Unmanaged.passUnretained(event)
-        }
-
-        let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
+        let keyCode = Int(event.getIntegerValueField(.keyboardEventKeycode))
         let flags = event.flags
 
-        if keyCode == keyCodeExpected && matchModifiers(flags, expected: modifiersExpected) {
+        // 检测悬浮图标快捷键
+        if floatingEnabled, floatingKeyCode >= 0,
+           keyCode == floatingKeyCode, matchModifiers(flags, expected: floatingModifiers) {
             Task { @MainActor in
                 self.onHotKeyTriggered?()
             }
-            // 返回 nil 消费此事件，阻止其他应用收到
+            return nil
+        }
+
+        // 检测提示语输入快捷键
+        if inputEnabled, inputKeyCode >= 0,
+           keyCode == inputKeyCode, matchModifiers(flags, expected: inputModifiers) {
+            Task { @MainActor in
+                self.onPromptInputHotKeyTriggered?()
+            }
             return nil
         }
 

@@ -51,7 +51,15 @@ struct QuickAccessView: View {
                                     isCopied: copiedId == prompt.id,
                                     isHighlightedByCollection: highlightedPromptIds.contains(prompt.id),
                                     onCopy: { copyPrompt(prompt) },
-                                    onDragStarted: { store.recordUsage(id: prompt.id) }
+                                    onDragStarted: { store.recordUsage(id: prompt.id) },
+                                    onDoubleClick: { prompt in
+                                        // 发送通知，由 AppDelegate 转发给 PromptInputView
+                                        NotificationCenter.default.post(
+                                            name: .appendToPromptInput,
+                                            object: nil,
+                                            userInfo: ["content": prompt.content]
+                                        )
+                                    }
                                 )
                             }
                         }
@@ -259,8 +267,12 @@ private struct QuickAccessItemView: View {
     var isHighlightedByCollection: Bool = false
     let onCopy: () -> Void
     var onDragStarted: (() -> Void)? = nil
+    /// 双击追加回调
+    var onDoubleClick: ((Prompt) -> Void)? = nil
 
     @State private var isHovered = false
+    @State private var clickCount = 0
+    @State private var clickTimer: DispatchWorkItem?
     @EnvironmentObject private var theme: ThemeManager
 
     private var isDark: Bool { theme.mode == .dark }
@@ -336,7 +348,9 @@ private struct QuickAccessItemView: View {
         .offset(x: isHovered ? 4 : isHighlightedByCollection ? 2 : 0)
         .animation(.easeInOut(duration: 0.15), value: isHighlightedByCollection)
         .contentShape(Capsule())
-        .onTapGesture { onCopy() }
+        .onTapGesture {
+            handleClick()
+        }
         .onDrag {
             onDragStarted?()
             return NSItemProvider(object: prompt.content as NSString)
@@ -346,5 +360,25 @@ private struct QuickAccessItemView: View {
                 isHovered = hovering
             }
         }
+    }
+
+    private func handleClick() {
+        clickCount += 1
+        clickTimer?.cancel()
+
+        let work = DispatchWorkItem { [self] in
+            if clickCount >= 2 {
+                // 双击：追加到提示语输入框
+                onDoubleClick?(prompt)
+            } else {
+                // 单击：复制到剪贴板
+                onCopy()
+            }
+            clickCount = 0
+        }
+        clickTimer = work
+
+        // 250ms 内判断是否双击
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: work)
     }
 }

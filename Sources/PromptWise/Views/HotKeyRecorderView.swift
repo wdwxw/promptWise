@@ -132,3 +132,130 @@ struct HotKeyRecorderView: View {
         }
     }
 }
+
+// MARK: - 提示语输入快捷键录制视图
+
+/// 提示语输入快捷键录制视图组件
+struct PromptInputHotKeyRecorderView: View {
+    @EnvironmentObject var theme: ThemeManager
+    @State private var isRecording = false
+    @State private var localMonitor: Any?
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Button {
+                if isRecording {
+                    stopRecording()
+                } else {
+                    startRecording()
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    if isRecording {
+                        Text("按下快捷键...")
+                            .foregroundStyle(.orange)
+                    } else {
+                        Text(currentDisplayString)
+                    }
+                }
+                .font(.system(size: 12, weight: .medium, design: .monospaced))
+                .frame(minWidth: 100)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(isRecording ? Color.orange.opacity(0.15) : Color(nsColor: .controlBackgroundColor))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(isRecording ? Color.orange : Color(nsColor: .separatorColor), lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+
+            if theme.promptInputHotKeyCode >= 0 {
+                Button {
+                    clearHotKey()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help("清除快捷键")
+            }
+        }
+        .onDisappear {
+            stopRecording()
+        }
+    }
+
+    private var currentDisplayString: String {
+        HotKeyManager.displayString(
+            keyCode: theme.promptInputHotKeyCode,
+            modifiers: theme.promptInputHotKeyModifiers
+        )
+    }
+
+    private func startRecording() {
+        isRecording = true
+
+        localMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            handleKeyEvent(event)
+            return nil
+        }
+    }
+
+    private func stopRecording() {
+        isRecording = false
+        if let monitor = localMonitor {
+            NSEvent.removeMonitor(monitor)
+            localMonitor = nil
+        }
+    }
+
+    private func handleKeyEvent(_ event: NSEvent) {
+        let keyCode = Int(event.keyCode)
+
+        let modifierOnlyKeys: Set<Int> = [
+            kVK_Shift, kVK_RightShift,
+            kVK_Control, kVK_RightControl,
+            kVK_Option, kVK_RightOption,
+            kVK_Command, kVK_RightCommand,
+            kVK_CapsLock, kVK_Function
+        ]
+
+        if modifierOnlyKeys.contains(keyCode) { return }
+
+        if keyCode == kVK_Escape {
+            stopRecording()
+            return
+        }
+
+        var modifiers: UInt64 = 0
+        if event.modifierFlags.contains(.control) { modifiers |= CGEventFlags.maskControl.rawValue }
+        if event.modifierFlags.contains(.option)  { modifiers |= CGEventFlags.maskAlternate.rawValue }
+        if event.modifierFlags.contains(.shift)   { modifiers |= CGEventFlags.maskShift.rawValue }
+        if event.modifierFlags.contains(.command) { modifiers |= CGEventFlags.maskCommand.rawValue }
+
+        if modifiers == 0 { return }
+
+        stopRecording()
+
+        theme.promptInputHotKeyCode = keyCode
+        theme.promptInputHotKeyModifiers = modifiers
+
+        HotKeyManager.shared.updateCache()
+        DispatchQueue.main.async {
+            HotKeyManager.shared.restart()
+        }
+    }
+
+    private func clearHotKey() {
+        theme.promptInputHotKeyCode = -1
+        theme.promptInputHotKeyModifiers = 0
+        HotKeyManager.shared.updateCache()
+        DispatchQueue.main.async {
+            HotKeyManager.shared.restart()
+        }
+    }
+}

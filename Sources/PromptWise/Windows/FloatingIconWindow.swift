@@ -12,8 +12,15 @@ final class FloatingIconWindow: NSPanel {
         static let themeIconSize: CGFloat = 18
         static let themeTapRadius: CGFloat = 12
     }
+    
+    private enum OrbitTapTarget {
+        case lightMode
+        case darkMode
+        case promptInput
+    }
 
     var onClick: (() -> Void)?
+    var onPromptInputClick: (() -> Void)?
     var onHoverChanged: ((Bool) -> Void)?
     var onPositionChanged: (() -> Void)?
     var onDragStarted: (() -> Void)?
@@ -91,20 +98,22 @@ final class FloatingIconWindow: NSPanel {
         return CGPoint(x: x, y: y)
     }
 
-    private func hitTestThemeMode(at pointInWindow: NSPoint) -> ThemeMode? {
+    private func hitTestOrbitTarget(at pointInWindow: NSPoint) -> OrbitTapTarget? {
         let yDown = Layout.windowSize - pointInWindow.y
         let sunAngle = Layout.clusterAngle - (Layout.gapAngle / 2)
         let moonAngle = Layout.clusterAngle + (Layout.gapAngle / 2)
-        let targets: [(ThemeMode, CGPoint)] = [
-            (.light, orbitPointYDown(angle: sunAngle)),
-            (.dark, orbitPointYDown(angle: moonAngle))
+        let pencilAngle = Layout.clusterAngle + 180
+        let targets: [(OrbitTapTarget, CGPoint)] = [
+            (.lightMode, orbitPointYDown(angle: sunAngle)),
+            (.darkMode, orbitPointYDown(angle: moonAngle)),
+            (.promptInput, orbitPointYDown(angle: pencilAngle))
         ]
 
-        for (mode, center) in targets {
+        for (target, center) in targets {
             let dx = pointInWindow.x - center.x
             let dy = yDown - center.y
             if sqrt(dx * dx + dy * dy) <= Layout.themeTapRadius {
-                return mode
+                return target
             }
         }
         return nil
@@ -138,8 +147,15 @@ final class FloatingIconWindow: NSPanel {
             }
         case .leftMouseUp:
             if !isDragging {
-                if let mode = hitTestThemeMode(at: event.locationInWindow) {
-                    ThemeManager.shared.mode = mode
+                if let target = hitTestOrbitTarget(at: event.locationInWindow) {
+                    switch target {
+                    case .lightMode:
+                        ThemeManager.shared.mode = .light
+                    case .darkMode:
+                        ThemeManager.shared.mode = .dark
+                    case .promptInput:
+                        onPromptInputClick?()
+                    }
                     break
                 }
                 onClick?()
@@ -185,6 +201,10 @@ private struct FloatingIconContent: View {
     private var moonPoint: CGPoint {
         orbitPoint(angle: Layout.clusterAngle + (Layout.gapAngle / 2))
     }
+    
+    private var pencilPoint: CGPoint {
+        orbitPoint(angle: Layout.clusterAngle + 180)
+    }
 
     var body: some View {
         ZStack {
@@ -225,6 +245,9 @@ private struct FloatingIconContent: View {
                 mode: .dark
             )
             .position(moonPoint)
+
+            promptInputNode()
+                .position(pencilPoint)
         }
         .frame(width: Layout.windowSize, height: Layout.windowSize)
         .scaleEffect(isHovered ? 1.04 : 1.0)
@@ -287,6 +310,32 @@ private struct FloatingIconContent: View {
                             ? Color(red: 0.97, green: 0.99, blue: 1.0)
                             : Color(red: 0.76, green: 0.88, blue: 1.0)
                     )
+            }
+        }
+        .frame(width: Layout.themeIconSize, height: Layout.themeIconSize)
+    }
+    
+    private func promptInputNode() -> some View {
+        ZStack {
+            Circle()
+                .fill(Color(red: 0.24, green: 0.24, blue: 0.28).opacity(0.92))
+                .overlay(
+                    Circle()
+                        .stroke(Color.white.opacity(0.36), lineWidth: 0.9)
+                )
+                .shadow(color: .black.opacity(0.22), radius: 3)
+
+            VStack(spacing: 0.8) {
+                Image(systemName: "pencil")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(Color(red: 0.98, green: 0.88, blue: 0.44))
+                    .rotationEffect(.degrees(-20))
+                    .offset(x: 0.4, y: 0.2)
+
+                RoundedRectangle(cornerRadius: 0.6)
+                    .fill(Color(red: 0.98, green: 0.88, blue: 0.44).opacity(0.95))
+                    .frame(width: 8.5, height: 1.1)
+                    .offset(y: 0.3)
             }
         }
         .frame(width: Layout.themeIconSize, height: Layout.themeIconSize)
