@@ -71,6 +71,21 @@ struct SettingsView: View {
                             }
 
                             HStack(spacing: 6) {
+                                Text("每列条数")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(.secondary)
+
+                                Picker("", selection: $theme.quickAccessItemsPerColumn) {
+                                    ForEach(ThemeManager.itemsPerColumnOptions, id: \.self) { count in
+                                        Text("\(count) 条").tag(count)
+                                    }
+                                }
+                                .pickerStyle(.menu)
+                                .frame(width: 70)
+                                .controlSize(.small)
+                            }
+
+                            HStack(spacing: 6) {
                                 Text("自动收起")
                                     .font(.system(size: 12))
                                     .foregroundStyle(.secondary)

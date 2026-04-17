@@ -55,6 +55,10 @@ final class ThemeManager: ObservableObject {
         didSet { UserDefaults.standard.set(quickAccessItemCount, forKey: "quickAccessItemCount") }
     }
 
+    @Published var quickAccessItemsPerColumn: Int {
+        didSet { UserDefaults.standard.set(quickAccessItemsPerColumn, forKey: "quickAccessItemsPerColumn") }
+    }
+
     /// 快捷图标列表显示的分类（nil = 全部）
     @Published var quickAccessCategoryId: UUID? {
         didSet {
@@ -110,6 +114,7 @@ final class ThemeManager: ObservableObject {
 
     static let dismissDelayOptions: [Double] = [0.5, 1, 2, 3, 5, 8, 10]
     static let itemCountOptions: [Int] = [5, 10, 15, 20, 30, 50]
+    static let itemsPerColumnOptions: [Int] = [5, 10]
 
     private init() {
         let saved = UserDefaults.standard.string(forKey: "appThemeMode") ?? "dark"
@@ -119,6 +124,12 @@ final class ThemeManager: ObservableObject {
         self.quickAccessDismissDelay = savedDelay ?? 3.0
         let savedCount = UserDefaults.standard.object(forKey: "quickAccessItemCount") as? Int
         self.quickAccessItemCount = savedCount ?? 10
+        let savedItemsPerColumn = UserDefaults.standard.object(forKey: "quickAccessItemsPerColumn") as? Int
+        if let savedItemsPerColumn, Self.itemsPerColumnOptions.contains(savedItemsPerColumn) {
+            self.quickAccessItemsPerColumn = savedItemsPerColumn
+        } else {
+            self.quickAccessItemsPerColumn = 10
+        }
         if let idString = UserDefaults.standard.string(forKey: "quickAccessCategoryId") {
             self.quickAccessCategoryId = UUID(uuidString: idString)
         } else {

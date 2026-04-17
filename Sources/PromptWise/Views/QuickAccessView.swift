@@ -9,7 +9,10 @@ struct QuickAccessView: View {
     @State private var copiedCollectionId: UUID?
     /// 当前 hover 集合包含的提示语 ID（用于高亮快捷列表）
     @State private var highlightedPromptIds: Set<UUID> = []
-    private let maxPerColumn = 10
+
+    private var maxPerColumn: Int {
+        max(1, theme.quickAccessItemsPerColumn)
+    }
 
     private var recentPrompts: [Prompt] {
         let filtered = store.prompts(for: theme.quickAccessCategoryId)

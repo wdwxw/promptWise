@@ -316,27 +316,31 @@ private struct FloatingIconContent: View {
     }
     
     private func promptInputNode() -> some View {
-        ZStack {
+        let pencilFill = Color(red: 0.98, green: 0.75, blue: 0.14)
+        let pencilFillEnd = Color(red: 0.96, green: 0.62, blue: 0.04)
+        let activeGlow = Color(red: 0.98, green: 0.75, blue: 0.14)
+        
+        return ZStack {
             Circle()
-                .fill(Color(red: 0.24, green: 0.24, blue: 0.28).opacity(0.92))
+                .fill(
+                    LinearGradient(
+                        colors: [pencilFill, pencilFillEnd],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
                 .overlay(
                     Circle()
-                        .stroke(Color.white.opacity(0.36), lineWidth: 0.9)
+                        .stroke(Color.white.opacity(0.88), lineWidth: 1.1)
                 )
-                .shadow(color: .black.opacity(0.22), radius: 3)
-
-            VStack(spacing: 0.8) {
-                Image(systemName: "pencil")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(Color(red: 0.98, green: 0.88, blue: 0.44))
-                    .rotationEffect(.degrees(-20))
-                    .offset(x: 0.4, y: 0.2)
-
-                RoundedRectangle(cornerRadius: 0.6)
-                    .fill(Color(red: 0.98, green: 0.88, blue: 0.44).opacity(0.95))
-                    .frame(width: 8.5, height: 1.1)
-                    .offset(y: 0.3)
-            }
+                .shadow(color: activeGlow.opacity(0.55), radius: 8)
+                .shadow(color: activeGlow.opacity(0.35), radius: 3)
+            
+            Image(systemName: "pencil")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(.white)
+                .shadow(color: .black.opacity(0.15), radius: 1, y: 1)
+                .rotationEffect(.degrees(-22.5))
         }
         .frame(width: Layout.themeIconSize, height: Layout.themeIconSize)
     }
