@@ -36,7 +36,13 @@ Sources/PromptWise/
 │   ├── Prompt.swift                 # 提示语数据模型
 │   ├── PromptCollection.swift       # 提示语集合模型
 │   ├── PromptStore.swift            # 数据存储与业务逻辑中枢
-│   └── ThemeManager.swift           # 主题系统管理
+│   ├── ThemeManager.swift           # 主题系统管理
+│   ├── HotKeyManager.swift          # 全局快捷键管理 (EventTap)
+│   ├── AIModelConfig.swift          # AI 模型配置数据模型 ⭐
+│   ├── AIModelConfigStore.swift     # AI 模型配置存储与管理 ⭐
+│   ├── AIService.swift              # AI 服务（API 调用、日志系统） ⭐
+│   ├── PromptInputSession.swift     # 提示语优化会话数据模型 ⭐
+│   └── PromptInputSessionStore.swift # 提示语优化会话存储 ⭐
 ├── Views/
 │   ├── MainPanelView.swift          # 主面板视图 + 窗口控制器
 │   ├── PromptListView.swift         # 列表/宫格视图 + 拖拽逻辑
@@ -48,13 +54,20 @@ Sources/PromptWise/
 │   ├── CategoryManagerView.swift    # 分类管理
 │   ├── ImportView.swift             # 批量导入
 │   ├── QuickAccessView.swift        # 快捷访问视图
-│   └── SettingsView.swift           # 设置视图
+│   ├── SettingsView.swift           # 设置视图
+│   ├── HotKeyRecorderView.swift     # 全局快捷键录制视图
+│   ├── PromptInputView.swift        # 提示语输入与 AI 优化视图 ⭐
+│   ├── AIModelConfigListView.swift  # AI 模型配置列表视图 ⭐
+│   └── AIModelConfigEditorView.swift # AI 模型配置编辑器 ⭐
 └── Windows/
-    ├── FloatingIconWindow.swift     # 悬浮图标窗口 (96x96)
+    ├── FloatingIconWindow.swift     # 悬浮图标窗口 (56x56)
     ├── MainPanelWindow.swift        # 主面板窗口 (320x520)
     ├── QuickAccessWindow.swift      # 快捷访问窗口 (自适应)
-    └── SettingsWindow.swift         # 设置窗口 (300x自适应)
+    ├── SettingsWindow.swift         # 设置窗口 (300x自适应)
+    └── PromptInputWindow.swift      # 提示语输入窗口 (450x420) ⭐
 ```
+
+> ⭐ 标记为 AI 优化功能相关的新增文件
 
 ---
 
@@ -175,8 +188,23 @@ final class ThemeManager: ObservableObject {
     @Published var quickAccessEnabled: Bool
     @Published var quickAccessDismissDelay: Double  // 0.5/1/2/3/5/8/10 秒
     @Published var quickAccessItemCount: Int       // 5/10/15/20/30/50 条
+    @Published var quickAccessItemsPerColumn: Int  // 5/10 条
     @Published var quickAccessCategoryId: UUID?    // 快捷访问筛选分类
     @Published var dataAddPosition: DataAddPosition // .top / .bottom
+    
+    // 全局快捷键配置
+    @Published var globalHotKeyCode: Int           // keyCode (-1 表示未设置)
+    @Published var globalHotKeyModifiers: UInt64   // CGEventFlags rawValue
+    @Published var globalHotKeyEnabled: Bool
+    
+    // 提示语输入快捷键配置
+    @Published var promptInputHotKeyCode: Int
+    @Published var promptInputHotKeyModifiers: UInt64
+    @Published var promptInputHotKeyEnabled: Bool
+    @Published var promptInputDraft: String        // 输入框草稿
+    
+    // Debug 模式
+    @Published var debugModeEnabled: Bool          // 控制 AI 服务日志输出
 }
 ```
 
@@ -302,9 +330,20 @@ final class ThemeManager: ObservableObject {
 3. **快捷图标设置**:
    - 悬停展开开关
    - 显示条数 (5/10/15/20/30/50)
+   - 每列条数 (5/10)
    - 自动收起延迟 (0.5/1/2/3/5/8/10秒)
    - 显示分类筛选
-4. **数据统计**: 查看提示语使用统计 (打开 PromptStatsView)
+4. **全局快捷键设置**:
+   - 启用开关
+   - 快捷键录制
+   - 辅助功能授权状态
+5. **提示语输入快捷键设置**: ⭐
+   - 启用开关
+   - 快捷键录制
+6. **数据统计**: 查看提示语使用统计 (打开 PromptStatsView)
+7. **开发调试**: ⭐
+   - Debug 模式开关
+   - 日志文件位置（点击在 Finder 中显示）
 
 **入口:** `AppDelegate.openPreferences()` → `SettingsWindow`
 
@@ -376,7 +415,27 @@ final class SettingsWindow: NSWindow {
 
 ---
 
+### 5.5 提示语输入窗口 `PromptInputWindow.swift` ⭐
+```swift
+final class PromptInputWindow: NSPanel {
+    // 尺寸: 450x420
+    // 级别: .floating
+    // 特性: 无标题栏、圆角、可拖拽
+
+    func showAtCenter()
+    func toggle()
+}
+```
+
+**快捷键:** Control+Option+I (可自定义)
+
+**入口:** `AppDelegate.setupPromptInputWindow()`
+
+---
+
 ## 6. 快捷键
+
+### 6.1 应用快捷键
 
 | 快捷键 | 功能 | 实现位置 |
 |--------|------|---------|
@@ -384,6 +443,15 @@ final class SettingsWindow: NSWindow {
 | Cmd+F | 显示/隐藏悬浮图标 | `AppDelegate.toggleFloatingIcon()` |
 | Cmd+, | 打开偏好设置 | `AppDelegate.openPreferences()` |
 | Cmd+Q | 退出应用 | `AppDelegate.quitApp()` |
+
+### 6.2 全局快捷键 (可自定义)
+
+| 默认快捷键 | 功能 | 配置位置 |
+|-----------|------|---------|
+| Control+Option+Space | 呼出悬浮图标 | 设置 → 全局快捷键 |
+| Control+Option+I | 呼出提示语输入框 ⭐ | 设置 → 输入快捷键 |
+
+**实现:** `HotKeyManager.swift` - 基于 CGEventTap 的全局事件监听
 
 ---
 
@@ -396,7 +464,8 @@ NSWindow.Level (高 → 低)
 │   └── QuickAccessWindow   (快捷访问)
 ├── .floating
 │   ├── MainPanelWindow     (主面板)
-│   └── SettingsWindow      (设置)
+│   ├── SettingsWindow      (设置)
+│   └── PromptInputWindow   (提示语输入) ⭐
 └── 普通窗口
 ```
 
@@ -405,14 +474,62 @@ NSWindow.Level (高 → 低)
 ## 8. 数据存储路径
 
 ```
-~/Library/Application Support/PromptWise/data.json
+~/Library/Application Support/PromptWise/
+├── data.json           # 提示语、分类、集合数据
+├── models.json         # AI 模型配置 ⭐
+├── session.json        # 提示语优化会话（版本历史） ⭐
+└── logs/
+    └── ai_service.log  # AI 服务日志（Debug 模式） ⭐
 ```
 
-**结构:**
+**data.json 结构:**
 ```json
 {
   "prompts": [...],
-  "categories": [...]
+  "categories": [...],
+  "collections": [...]
+}
+```
+
+**models.json 结构:** ⭐
+```json
+[
+  {
+    "id": "uuid",
+    "name": "本地 Ollama",
+    "apiFormat": "ollama",
+    "baseURL": "http://localhost:11434",
+    "apiKey": "",
+    "modelName": "qwen3:4b",
+    "systemPrompt": "你是一个提示语优化专家...",
+    "temperature": 0.7,
+    "maxTokens": 2048,
+    "streamEnabled": true,
+    "thinkEnabled": true,
+    "order": 0,
+    "createdAt": "2026-04-18T10:00:00Z",
+    "updatedAt": "2026-04-18T10:00:00Z"
+  }
+]
+```
+
+**session.json 结构:** ⭐
+```json
+{
+  "originalContent": "用户输入的原始内容",
+  "versions": [
+    {
+      "id": "uuid",
+      "index": 1,
+      "content": "AI 优化后的内容",
+      "modelConfigId": "uuid",
+      "modelConfigName": "本地 Ollama",
+      "createdAt": "2026-04-18T10:00:00Z"
+    }
+  ],
+  "selectedVersionId": "uuid",
+  "versionCounter": 1,
+  "lastUpdatedAt": "2026-04-18T10:00:00Z"
 }
 ```
 
@@ -426,8 +543,18 @@ NSWindow.Level (高 → 低)
 | `quickAccessEnabled` | Bool | 快捷访问开关 |
 | `quickAccessDismissDelay` | Double | 收起延迟(秒) |
 | `quickAccessItemCount` | Int | 显示条数 |
+| `quickAccessItemsPerColumn` | Int | 每列显示条数 |
 | `quickAccessCategoryId` | String? | 分类 UUID |
 | `dataAddPosition` | String | "top" 或 "bottom"，新数据插入位置 |
+| `globalHotKeyCode` | Int | 全局快捷键 keyCode |
+| `globalHotKeyModifiers` | UInt64 | 全局快捷键修饰键 |
+| `globalHotKeyEnabled` | Bool | 全局快捷键开关 |
+| `promptInputHotKeyCode` | Int | 提示语输入快捷键 keyCode ⭐ |
+| `promptInputHotKeyModifiers` | UInt64 | 提示语输入快捷键修饰键 ⭐ |
+| `promptInputHotKeyEnabled` | Bool | 提示语输入快捷键开关 ⭐ |
+| `promptInputDraft` | String | 提示语输入框草稿 ⭐ |
+| `debugModeEnabled` | Bool | Debug 模式开关（AI 日志） ⭐ |
+| `selectedAIModelConfigId` | String? | 当前选中的 AI 模型配置 ID ⭐ |
 
 ---
 
@@ -455,6 +582,10 @@ extension Notification.Name {
 | 修改数据存储格式 | `Models/PromptStore.swift` | `load()` / `save()` |
 | 修改主面板布局 | `Views/MainPanelView.swift` | body |
 | 添加新导入格式 | `Models/PromptStore.swift` | `importFrom*` 方法 |
+| 修改全局快捷键 | `Models/HotKeyManager.swift` | `handleKeyEvent()` |
+| 添加 AI 模型参数 | `Models/AIModelConfig.swift` + `Views/AIModelConfigEditorView.swift` + `Models/AIService.swift` | 模型、视图、服务 |
+| 修改 AI 日志格式 | `Models/AIService.swift` | `AILogger` 类 |
+| 修改提示语输入界面 | `Views/PromptInputView.swift` | body + 状态管理 |
 
 ---
 
@@ -819,4 +950,229 @@ Sources/PromptWise/
 
 ---
 
-*文档版本: 2026-04-15*
+---
+
+## 25. AI 提示语优化功能 ⭐
+
+### 25.1 功能概述
+通过 AI 模型对用户输入的提示语进行优化，支持多版本管理和持久化存储。
+
+**核心特性:**
+- 支持 Ollama 和 OpenAI 格式 API
+- 流式输出实时显示
+- 多版本历史管理
+- 思考模式控制（Ollama think 参数）
+- Debug 日志系统
+
+### 25.2 数据模型
+
+#### `AIModelConfig.swift` - AI 模型配置
+```swift
+enum APIFormat: String, Codable, CaseIterable {
+    case openai = "openai"    // OpenAI Chat Completions 格式
+    case ollama = "ollama"    // Ollama API 格式
+}
+
+struct AIModelConfig: Identifiable, Codable, Hashable {
+    var id: UUID
+    var name: String              // 配置名称
+    var apiFormat: APIFormat      // API 格式
+    var baseURL: String           // Base URL
+    var apiKey: String            // API Key (Ollama 可空)
+    var modelName: String         // 模型名称
+    var systemPrompt: String      // 系统提示语
+    var temperature: Double       // 温度 (0.0 - 2.0)
+    var maxTokens: Int            // Token 上限
+    var streamEnabled: Bool       // 流式输出开关
+    var thinkEnabled: Bool        // 思考模式开关 (Ollama)
+    var order: Int
+    var createdAt: Date
+    var updatedAt: Date
+}
+```
+
+#### `PromptInputSession.swift` - 优化会话
+```swift
+struct OptimizedVersion: Identifiable, Codable, Hashable {
+    var id: UUID
+    var index: Int                // 版本序号 (1, 2, 3...)
+    var content: String           // 优化后内容
+    var modelConfigId: UUID       // 使用的模型配置
+    var modelConfigName: String   // 模型配置名称
+    var createdAt: Date
+}
+
+struct PromptInputSession: Codable {
+    var originalContent: String           // 用户原始输入
+    var versions: [OptimizedVersion]      // 优化版本列表
+    var selectedVersionId: UUID?          // 当前选中版本
+    var versionCounter: Int               // 版本计数器
+    var lastUpdatedAt: Date
+    
+    var currentContent: String { ... }    // 当前显示内容
+}
+```
+
+### 25.3 AI 服务 (`AIService.swift`)
+
+```swift
+@MainActor
+final class AIService: ObservableObject {
+    static let shared = AIService()
+    
+    // Ollama 模型列表获取
+    func fetchOllamaModels(baseURL: String) async throws -> [String]
+    
+    // 非流式优化
+    func optimize(userPrompt: String, config: AIModelConfig) async throws -> String
+    
+    // 流式优化
+    func optimizeStream(
+        userPrompt: String,
+        config: AIModelConfig,
+        onChunk: @escaping (String) -> Void
+    ) async throws
+}
+```
+
+**API 格式支持:**
+
+| 格式 | 端点 | 特性 |
+|-----|------|------|
+| Ollama | `/api/generate` | 支持 `think` 参数、流式/非流式 |
+| OpenAI | `/v1/chat/completions` | 标准 Chat Completions API |
+
+**思考模式参数 (Ollama):**
+- `think: false` - 关闭思考模式，响应更快
+- 不传 `think` - 使用模型默认行为
+- 支持模型: Qwen3, DeepSeek R1, Gemma 4 等
+
+### 25.4 日志系统 (`AILogger`)
+
+```swift
+final class AILogger {
+    static let shared = AILogger()
+    
+    var isDebugEnabled: Bool { UserDefaults... }
+    var logFilePath: String { ... }
+    
+    func log(_ message: String, level: String = "INFO")
+    func error(_ message: String)
+    func debug(_ message: String)
+    
+    // 详细请求/响应日志
+    func logRequest(method:, url:, headers:, body:)
+    func logResponse(statusCode:, headers:, body:, truncateAt:)
+    func logStreamChunk(_ chunk: String, index: Int)
+}
+```
+
+**日志路径:** `~/Library/Application Support/PromptWise/logs/ai_service.log`
+
+**日志控制:** 设置 → 开发调试 → 启用 Debug 模式
+
+### 25.5 界面组件
+
+#### `PromptInputView.swift` - 主界面
+```
+┌────────────────────────────────────────┐
+│ 提示语输入                    [⚙️]      │ ← 标题栏 + 设置按钮
+├────────────────────────────────────────┤
+│ [当前] [提示语1] [提示语2]   [清除]    │ ← 状态条（版本切换）
+├────────────────────────────────────────┤
+│                                        │
+│   ┌──────────────────────────────┐    │
+│   │                              │    │
+│   │     文本编辑区域              │    │ ← 主编辑器
+│   │                              │    │
+│   └──────────────────────────────┘    │
+│                                        │
+├────────────────────────────────────────┤
+│ 字符: 123 | Token: ~45                 │ ← 统计信息
+├────────────────────────────────────────┤
+│ [选择模型 ▾]    [优化/停止]    [复制]  │ ← 底部操作栏
+└────────────────────────────────────────┘
+```
+
+**关键状态:**
+```swift
+@State private var text: String = ""
+@State private var isOptimizing = false
+@State private var isCancelled = false
+@State private var currentStreamingVersionId: UUID?
+@State private var optimizeTask: Task<Void, Never>?
+```
+
+#### `AIModelConfigListView.swift` - 配置列表
+- 显示所有 AI 模型配置
+- 支持新增、编辑、删除
+- 支持拖拽排序
+- 当前选中配置高亮
+
+#### `AIModelConfigEditorView.swift` - 配置编辑器
+- 基本信息: 名称、API 格式
+- 连接设置: Base URL、API Key、模型名称
+- 系统提示语
+- 参数设置: 温度、Token 上限、流式输出、思考模式
+
+### 25.6 窗口 (`PromptInputWindow.swift`)
+
+```swift
+final class PromptInputWindow: NSPanel {
+    // 尺寸: 450x420
+    // 级别: .floating
+    // 特性: 无标题栏、圆角、可拖拽
+    
+    func showAtCenter()
+    func toggle()
+}
+```
+
+**快捷键:** Control+Option+I (默认，可自定义)
+
+### 25.7 流式输出控制
+
+**启动优化:**
+```swift
+optimizeTask = Task { await startOptimize() }
+```
+
+**停止优化:**
+```swift
+func stopOptimize() {
+    isCancelled = true
+    optimizeTask?.cancel()
+    optimizeTask = nil
+    isOptimizing = false
+}
+```
+
+**自动停止场景:**
+- 点击"停止"按钮
+- 点击"清除"按钮
+- 切换到其他版本
+
+### 25.8 版本管理
+
+| 操作 | 行为 |
+|-----|------|
+| 点击"当前" | 显示原始输入 |
+| 点击"提示语N" | 显示第 N 个优化版本 |
+| 点击"优化" | 创建新版本并开始流式输出 |
+| 点击"清除" | 删除所有优化版本 |
+| 流式输出中 | 版本按钮显示"生成中..." |
+
+### 25.9 功能修改索引
+
+| 功能需求 | 相关文件 | 关键位置 |
+|---------|---------|---------|
+| 添加新 API 格式 | `AIModelConfig.swift`, `AIService.swift` | `APIFormat` 枚举, `optimize*` 方法 |
+| 修改默认系统提示语 | `AIModelConfig.swift` | `defaultOllama()`, `defaultOpenAI()` |
+| 修改日志格式 | `AIService.swift` | `AILogger` 类 |
+| 修改 Token 估算 | `PromptInputView.swift` | `estimatedTokenCount` |
+| 修改版本按钮样式 | `PromptInputView.swift` | `versionButton()` |
+| 添加新参数 | `AIModelConfig.swift`, `AIModelConfigEditorView.swift`, `AIService.swift` | 模型、视图、服务三处 |
+
+---
+
+*文档版本: 2026-04-18*

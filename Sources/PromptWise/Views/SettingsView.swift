@@ -236,6 +236,45 @@ struct SettingsView: View {
                     }
                     .controlSize(.small)
                 }
+
+                Divider()
+
+                HStack(alignment: .top, spacing: 12) {
+                    Text("开发调试：")
+                        .font(.system(size: 13))
+                        .frame(width: 70, alignment: .trailing)
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Toggle("启用 Debug 模式", isOn: $theme.debugModeEnabled)
+                            .toggleStyle(.switch)
+                            .controlSize(.small)
+
+                        if theme.debugModeEnabled {
+                            Text("AI 服务详细日志已启用")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.green)
+                            
+                            HStack(spacing: 4) {
+                                Text("日志路径:")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.secondary)
+                                
+                                Button {
+                                    let logPath = AILogger.shared.logFilePath
+                                    NSWorkspace.shared.selectFile(logPath, inFileViewerRootedAtPath: "")
+                                } label: {
+                                    Text("在 Finder 中显示")
+                                        .font(.system(size: 11))
+                                }
+                                .buttonStyle(.link)
+                            }
+                        } else {
+                            Text("关闭时不记录 AI 服务日志")
+                                .font(.system(size: 11))
+                                .foregroundStyle(theme.textTertiary)
+                        }
+                    }
+                }
             }
             .padding(30)
             .frame(width: 340)

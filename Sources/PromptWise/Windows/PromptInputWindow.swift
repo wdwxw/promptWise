@@ -5,7 +5,7 @@ final class PromptInputWindow: NSPanel {
     
     init(contentView: some View) {
         super.init(
-            contentRect: NSRect(x: 0, y: 0, width: 420, height: 320),
+            contentRect: NSRect(x: 0, y: 0, width: 450, height: 420),
             styleMask: [.titled, .closable, .fullSizeContentView, .nonactivatingPanel],
             backing: .buffered,
             defer: false

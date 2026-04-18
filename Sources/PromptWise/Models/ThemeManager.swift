@@ -112,6 +112,13 @@ final class ThemeManager: ObservableObject {
         didSet { UserDefaults.standard.set(promptInputDraft, forKey: "promptInputDraft") }
     }
 
+    // MARK: - Debug 模式配置
+    
+    /// Debug 模式是否启用（控制 AI 服务日志输出）
+    @Published var debugModeEnabled: Bool {
+        didSet { UserDefaults.standard.set(debugModeEnabled, forKey: "debugModeEnabled") }
+    }
+
     static let dismissDelayOptions: [Double] = [0.5, 1, 2, 3, 5, 8, 10]
     static let itemCountOptions: [Int] = [5, 10, 15, 20, 30, 50]
     static let itemsPerColumnOptions: [Int] = [5, 10]
@@ -153,6 +160,9 @@ final class ThemeManager: ObservableObject {
         self.promptInputHotKeyModifiers = savedInputModifiers ?? (CGEventFlags.maskControl.rawValue | CGEventFlags.maskAlternate.rawValue)
         self.promptInputHotKeyEnabled = UserDefaults.standard.object(forKey: "promptInputHotKeyEnabled") as? Bool ?? true
         self.promptInputDraft = UserDefaults.standard.string(forKey: "promptInputDraft") ?? ""
+        
+        // Debug 模式配置（默认关闭）
+        self.debugModeEnabled = UserDefaults.standard.object(forKey: "debugModeEnabled") as? Bool ?? false
     }
 
     // MARK: - Panel Background (#1e1e1e / #ffffff)
@@ -195,11 +205,11 @@ final class ThemeManager: ObservableObject {
             : Color(nsColor: NSColor(red: 0.533, green: 0.533, blue: 0.533, alpha: 1))
     }
 
-    // MARK: - Text Tertiary (#555555 / #aaaaaa)
+    // MARK: - Text Tertiary (#888888 / #aaaaaa)
 
     var textTertiary: Color {
         mode == .dark
-            ? Color(nsColor: NSColor(red: 0.333, green: 0.333, blue: 0.333, alpha: 1))
+            ? Color(nsColor: NSColor(red: 0.533, green: 0.533, blue: 0.533, alpha: 1))
             : Color(nsColor: NSColor(red: 0.667, green: 0.667, blue: 0.667, alpha: 1))
     }
 

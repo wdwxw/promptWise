@@ -35,55 +35,46 @@ final class PromptInputTextView: NSTextView {
 
 struct PromptInputView: View {
     @EnvironmentObject var theme: ThemeManager
+    @StateObject private var sessionStore = PromptInputSessionStore.shared
+    @StateObject private var configStore = AIModelConfigStore.shared
+    
     @State private var text: String = ""
     @State private var isCopied = false
     @State private var selectedRange: NSRange = NSRange(location: 0, length: 0)
+    @State private var isOptimizing = false
+    @State private var showModelConfig = false
+    @State private var currentStreamingVersionId: UUID?
+    @State private var errorMessage: String?
+    @State private var showErrorAlert = false
+    @State private var optimizeTask: Task<Void, Never>?
+    @State private var isCancelled = false
     
     var body: some View {
         VStack(spacing: 0) {
-            // 标题栏
-            HStack {
-                Text("提示语输入")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(theme.textPrimary)
-                Spacer()
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            // 1. 标题栏
+            headerSection
             
-            Divider()
-                .background(theme.border)
+            Divider().background(theme.border)
             
-            // 文本编辑区
-            PromptInputTextEditor(
-                text: $text,
-                selectedRange: $selectedRange,
-                mode: theme.mode
-            )
-            .frame(minHeight: 200)
-            .padding(12)
+            // 2. 状态条（版本切换按钮）
+            statusBarSection
             
-            Divider()
-                .background(theme.border)
+            Divider().background(theme.border)
             
-            // 底部工具栏
-            HStack {
-                Spacer()
-                
-                Button {
-                    copyToClipboard()
-                } label: {
-                    Text(isCopied ? "已复制" : "复制")
-                        .font(.system(size: 12))
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-                .tint(theme.accent)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            // 3. 文本编辑区
+            editorSection
+            
+            Divider().background(theme.border)
+            
+            // 4. 统计信息
+            statsSection
+            
+            Divider().background(theme.border)
+            
+            // 5. 底部工具栏
+            footerSection
         }
-        .frame(width: 420, height: 320)
+        .frame(width: 450, height: 420)
         .background(theme.panelBg)
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(
@@ -91,10 +82,10 @@ struct PromptInputView: View {
                 .stroke(theme.border, lineWidth: 1)
         )
         .onAppear {
-            text = ThemeManager.shared.promptInputDraft
+            loadSession()
         }
         .onDisappear {
-            ThemeManager.shared.promptInputDraft = text
+            saveSession()
         }
         .onDrop(of: [UTType.text, UTType.plainText, UTType.utf8PlainText], isTargeted: nil) { providers in
             handleDrop(providers: providers)
@@ -108,7 +99,426 @@ struct PromptInputView: View {
         .onReceive(NotificationCenter.default.publisher(for: .promptInputDidCopy)) { _ in
             showCopiedFeedback()
         }
+        .sheet(isPresented: $showModelConfig) {
+            AIModelConfigListView()
+                .environmentObject(theme)
+                .environment(\.colorScheme, theme.mode == .dark ? .dark : .light)
+        }
+        .environment(\.colorScheme, theme.mode == .dark ? .dark : .light)
     }
+    
+    // MARK: - 标题栏
+    
+    private var headerSection: some View {
+        HStack {
+            Text("提示语输入")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(theme.textPrimary)
+            Spacer()
+            Button {
+                showModelConfig = true
+            } label: {
+                Image(systemName: "gearshape")
+                    .font(.system(size: 14))
+                    .foregroundStyle(theme.textSecondary)
+            }
+            .buttonStyle(.plain)
+            .help("模型设置")
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+    }
+    
+    // MARK: - 状态条
+    
+    private var statusBarSection: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                // "当前"按钮
+                versionButton(
+                    title: "当前",
+                    isSelected: sessionStore.session.isOriginalSelected,
+                    isLoading: false,
+                    action: { selectOriginal() }
+                )
+                
+                // 优化版本按钮 - 显示模型配置名称
+                ForEach(sessionStore.session.versions) { version in
+                    versionButton(
+                        title: version.modelConfigName,
+                        isSelected: sessionStore.session.selectedVersionId == version.id,
+                        isLoading: isOptimizing && currentStreamingVersionId == version.id,
+                        action: { selectVersion(version.id) }
+                    )
+                }
+                
+                Spacer(minLength: 0)
+                
+                // 清除按钮
+                if !sessionStore.session.versions.isEmpty {
+                    Button {
+                        // 先停止正在进行的优化
+                        if isOptimizing {
+                            stopOptimize()
+                        }
+                        clearVersions()
+                    } label: {
+                        Text("清除")
+                            .font(.system(size: 11))
+                            .foregroundStyle(isOptimizing ? .red : theme.textTertiary)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(theme.surfaceBg.opacity(0.5))
+                    .clipShape(Capsule())
+                    .help(isOptimizing ? "停止并清除所有优化版本" : "清除所有优化版本")
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+        }
+    }
+    
+    private func versionButton(title: String, isSelected: Bool, isLoading: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 4) {
+                if isLoading {
+                    ProgressView()
+                        .scaleEffect(0.6)
+                        .frame(width: 12, height: 12)
+                        .tint(isSelected ? .white : theme.textSecondary)
+                }
+                Text(isLoading ? "生成中..." : title)
+                    .font(.system(size: 12, weight: isSelected ? .semibold : .medium))
+                    .foregroundStyle(isSelected ? .white : theme.textSecondary)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(isSelected ? theme.accent : theme.surfaceBg)
+            .clipShape(Capsule())
+            .overlay(
+                Capsule()
+                    .stroke(isSelected ? theme.accent : theme.border, lineWidth: isSelected ? 0 : 1)
+            )
+            .animation(.easeInOut(duration: 0.2), value: isLoading)
+        }
+        .buttonStyle(.plain)
+        .disabled(isLoading)
+    }
+    
+    // MARK: - 编辑区
+    
+    private var editorSection: some View {
+        PromptInputTextEditor(
+            text: $text,
+            selectedRange: $selectedRange,
+            mode: theme.mode
+        )
+        .frame(minHeight: 180)
+        .padding(12)
+        .onChange(of: text) { newValue in
+            // 只有在显示原始内容时，才更新原始内容
+            if sessionStore.session.isOriginalSelected && currentStreamingVersionId == nil {
+                sessionStore.updateOriginalContent(newValue)
+            }
+        }
+        .alert("错误", isPresented: $showErrorAlert) {
+            Button("确定", role: .cancel) {
+                errorMessage = nil
+            }
+        } message: {
+            Text(errorMessage ?? "未知错误")
+        }
+    }
+    
+    // MARK: - 统计信息
+    
+    private var statsSection: some View {
+        HStack {
+            Text("字符: \(text.count)")
+            Text("|")
+            Text("Token: ~\(tokenEstimate)")
+            Spacer()
+            if let error = errorMessage {
+                Text(error)
+                    .foregroundStyle(.red)
+                    .lineLimit(1)
+            }
+        }
+        .font(.system(size: 11))
+        .foregroundStyle(theme.textTertiary)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+    }
+    
+    private var tokenEstimate: Int {
+        guard !text.isEmpty else { return 0 }
+        let cjkCount = text.unicodeScalars.filter {
+            ($0.value >= 0x4E00 && $0.value <= 0x9FFF) ||
+            ($0.value >= 0x3400 && $0.value <= 0x4DBF) ||
+            ($0.value >= 0x20000 && $0.value <= 0x2A6DF)
+        }.count
+        let otherCount = text.count - cjkCount
+        return cjkCount + max(0, Int(ceil(Double(otherCount) / 4.0)))
+    }
+    
+    // MARK: - 底部工具栏
+    
+    private var footerSection: some View {
+        HStack(spacing: 12) {
+            // 模型选择
+            Menu {
+                ForEach(configStore.configs) { config in
+                    Button {
+                        configStore.selectConfig(id: config.id)
+                    } label: {
+                        HStack {
+                            Text(config.name)
+                                .foregroundStyle(theme.textPrimary)
+                            Spacer()
+                            if configStore.selectedConfigId == config.id {
+                                Image(systemName: "checkmark")
+                                    .foregroundStyle(theme.accent)
+                            }
+                        }
+                    }
+                }
+            } label: {
+                HStack {
+                    Text(configStore.selectedConfig?.name ?? "选择模型")
+                        .font(.system(size: 12))
+                        .foregroundStyle(theme.textPrimary)
+                    Spacer()
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.system(size: 10))
+                        .foregroundStyle(theme.textSecondary)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(theme.surfaceBg)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(theme.border, lineWidth: 1)
+                )
+            }
+            .menuStyle(.borderlessButton)
+            .frame(maxWidth: .infinity)
+            .disabled(isOptimizing)
+            
+            // 优化/停止按钮
+            Button {
+                if isOptimizing {
+                    stopOptimize()
+                } else {
+                    optimizeTask = Task { await startOptimize() }
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    if isOptimizing {
+                        Image(systemName: "stop.fill")
+                            .font(.system(size: 10))
+                    }
+                    Text(isOptimizing ? "停止" : "优化")
+                }
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 6)
+                .background(
+                    isOptimizing
+                    ? Color.red.opacity(0.8)
+                    : (sessionStore.session.originalContent.isEmpty || configStore.selectedConfig == nil)
+                        ? theme.textTertiary
+                        : theme.accent
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+            }
+            .buttonStyle(.plain)
+            .disabled(!isOptimizing && (sessionStore.session.originalContent.isEmpty || configStore.selectedConfig == nil))
+            
+            // 复制按钮
+            Button {
+                copyToClipboard()
+            } label: {
+                Text(isCopied ? "已复制" : "复制")
+                    .font(.system(size: 12))
+                    .foregroundStyle(theme.textPrimary)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 6)
+                    .background(theme.surfaceBg)
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(theme.border, lineWidth: 1)
+                    )
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+    }
+    
+    // MARK: - 会话管理
+    
+    private func loadSession() {
+        text = sessionStore.session.currentContent
+    }
+    
+    private func saveSession() {
+        sessionStore.save()
+    }
+    
+    private func selectOriginal() {
+        // 切换版本时停止正在进行的优化
+        if isOptimizing {
+            stopOptimize()
+        }
+        sessionStore.selectVersion(nil)
+        text = sessionStore.session.originalContent
+    }
+    
+    private func selectVersion(_ id: UUID) {
+        // 如果正在优化且切换到非当前流式版本，先停止
+        if isOptimizing && id != currentStreamingVersionId {
+            stopOptimize()
+        }
+        sessionStore.selectVersion(id)
+        text = sessionStore.session.currentContent
+    }
+    
+    private func clearVersions() {
+        sessionStore.clearVersions()
+        text = sessionStore.session.originalContent
+    }
+    
+    private func stopOptimize() {
+        AILogger.shared.log("用户停止优化")
+        isCancelled = true
+        optimizeTask?.cancel()
+        optimizeTask = nil
+        isOptimizing = false
+        
+        // 如果有正在生成的版本，保留已生成的内容
+        if currentStreamingVersionId != nil {
+            sessionStore.save()
+            AILogger.shared.log("保存已生成的部分内容")
+        }
+        currentStreamingVersionId = nil
+    }
+    
+    // MARK: - 优化操作
+    
+    private func startOptimize() async {
+        guard let config = configStore.selectedConfig else {
+            errorMessage = "请先选择模型"
+            showErrorAlert = true
+            return
+        }
+        
+        let originalContent = sessionStore.session.originalContent
+        guard !originalContent.isEmpty else {
+            errorMessage = "请输入内容"
+            showErrorAlert = true
+            return
+        }
+        
+        isOptimizing = true
+        isCancelled = false
+        errorMessage = nil
+        
+        AILogger.shared.log("开始优化任务")
+        
+        // 创建新版本（初始内容为空）
+        let version = sessionStore.addVersion(
+            content: "",
+            modelConfigId: config.id,
+            modelConfigName: config.name
+        )
+        currentStreamingVersionId = version.id
+        text = ""
+        
+        do {
+            if config.streamEnabled {
+                // 流式输出
+                var fullContent = ""
+                try await AIService.shared.optimizeStream(
+                    userPrompt: originalContent,
+                    config: config
+                ) { [self] chunk in
+                    // 检查是否被取消
+                    guard !isCancelled else {
+                        AILogger.shared.log("流式输出已被取消，停止接收")
+                        return
+                    }
+                    fullContent += chunk
+                    text = fullContent
+                    sessionStore.updateVersionContent(version.id, content: fullContent)
+                }
+                
+                // 检查是否被取消
+                if !isCancelled {
+                    // 流式结束后保存
+                    sessionStore.save()
+                    AILogger.shared.log("流式输出完成，已保存")
+                }
+            } else {
+                // 非流式输出
+                let result = try await AIService.shared.optimize(
+                    userPrompt: originalContent,
+                    config: config
+                )
+                
+                // 检查是否被取消
+                guard !isCancelled else {
+                    AILogger.shared.log("非流式输出已被取消")
+                    return
+                }
+                
+                text = result
+                sessionStore.updateVersionContent(version.id, content: result)
+                sessionStore.save()
+                AILogger.shared.log("非流式输出完成，已保存")
+            }
+        } catch is CancellationError {
+            // 任务被取消，不显示错误
+            AILogger.shared.log("优化任务被取消")
+            // 如果版本内容为空，删除它
+            if sessionStore.session.versions.first(where: { $0.id == version.id })?.content.isEmpty ?? true {
+                sessionStore.session.versions.removeAll { $0.id == version.id }
+                sessionStore.session.selectedVersionId = nil
+                text = sessionStore.session.originalContent
+            }
+            sessionStore.save()
+        } catch let error as AIServiceError {
+            guard !isCancelled else { return }
+            errorMessage = error.localizedDescription
+            showErrorAlert = true
+            AILogger.shared.log("AI服务错误: \(error.localizedDescription)")
+            // 删除刚创建的空版本
+            sessionStore.session.versions.removeAll { $0.id == version.id }
+            sessionStore.session.selectedVersionId = nil
+            sessionStore.save()
+            text = sessionStore.session.originalContent
+        } catch {
+            guard !isCancelled else { return }
+            errorMessage = error.localizedDescription
+            showErrorAlert = true
+            AILogger.shared.log("未知错误: \(error.localizedDescription)")
+            // 删除刚创建的空版本
+            sessionStore.session.versions.removeAll { $0.id == version.id }
+            sessionStore.session.selectedVersionId = nil
+            sessionStore.save()
+            text = sessionStore.session.originalContent
+        }
+        
+        isOptimizing = false
+        currentStreamingVersionId = nil
+        optimizeTask = nil
+    }
+    
+    // MARK: - 复制操作
     
     private func copyToClipboard() {
         NSPasteboard.general.clearContents()
@@ -126,6 +536,8 @@ struct PromptInputView: View {
             }
         }
     }
+    
+    // MARK: - 拖拽处理
     
     private func handleDrop(providers: [NSItemProvider]) {
         for provider in providers {
