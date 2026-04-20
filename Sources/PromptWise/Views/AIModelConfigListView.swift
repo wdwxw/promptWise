@@ -7,6 +7,10 @@ struct AIModelConfigListView: View {
     @State private var showingNewConfig = false
     @Environment(\.dismiss) private var dismiss
     
+    private var subtleSurface: Color {
+        theme.mode == .dark ? theme.surfaceBg.opacity(0.55) : theme.surfaceBg.opacity(0.75)
+    }
+    
     var body: some View {
         VStack(spacing: 0) {
             // 标题栏
@@ -18,7 +22,9 @@ struct AIModelConfigListView: View {
                     Image(systemName: "xmark")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(theme.textSecondary)
-                        .frame(width: 20, height: 20)
+                        .frame(width: 28, height: 28)
+                        .background(subtleSurface)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
                 }
                 .buttonStyle(.plain)
                 .help("关闭")
@@ -26,7 +32,7 @@ struct AIModelConfigListView: View {
                 Spacer()
                 
                 Text("模型配置")
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(theme.textPrimary)
                 
                 Spacer()
@@ -36,14 +42,17 @@ struct AIModelConfigListView: View {
                     showingNewConfig = true
                 } label: {
                     Image(systemName: "plus")
-                        .font(.system(size: 14))
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(theme.textSecondary)
-                        .frame(width: 20, height: 20)
+                        .frame(width: 28, height: 28)
+                        .background(subtleSurface)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
                 }
                 .buttonStyle(.plain)
                 .help("添加配置")
             }
-            .padding(16)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 14)
             
             Divider().background(theme.border)
             
@@ -57,16 +66,15 @@ struct AIModelConfigListView: View {
             Divider().background(theme.border)
             
             // 底部按钮
-            HStack {
+            HStack(spacing: 12) {
                 Spacer()
-                Button("完成") {
+                footerButton("完成", primary: true) {
                     dismiss()
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-                .tint(theme.accent)
             }
-            .padding(16)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 14)
+            .background(subtleSurface.opacity(0.45))
         }
         .frame(width: 400, height: 480)
         .background(theme.panelBg)
@@ -83,16 +91,36 @@ struct AIModelConfigListView: View {
         .environment(\.colorScheme, theme.mode == .dark ? .dark : .light)
     }
     
+    private func footerButton(_ title: String, primary: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(primary ? Color.white : theme.textPrimary)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 7)
+                .background(primary ? theme.accent : theme.surfaceBg)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(primary ? Color.clear : theme.border, lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
+    }
+    
     // MARK: - 空状态
     
     private var emptyState: some View {
         VStack(spacing: 12) {
             Image(systemName: "cpu")
-                .font(.system(size: 40))
+                .font(.system(size: 36))
                 .foregroundStyle(theme.textTertiary)
             Text("暂无模型配置")
-                .font(.system(size: 14))
+                .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(theme.textSecondary)
+            Text("点击右上角 + 快速创建一个模型配置")
+                .font(.system(size: 11))
+                .foregroundStyle(theme.textTertiary)
             Button("添加配置") {
                 showingNewConfig = true
             }
@@ -112,6 +140,8 @@ struct AIModelConfigListView: View {
                     configRow(config)
                 }
             }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
         }
     }
     
@@ -163,14 +193,24 @@ struct AIModelConfigListView: View {
                         .font(.system(size: 16))
                 }
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, 14)
             .padding(.vertical, 12)
             .background(
-                store.selectedConfigId == config.id
-                    ? theme.accent.opacity(0.1)
-                    : hoveredConfigId == config.id
-                        ? theme.surfaceBg.opacity(0.5)
-                        : Color.clear
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(
+                        store.selectedConfigId == config.id
+                            ? theme.accent.opacity(0.12)
+                            : hoveredConfigId == config.id
+                                ? subtleSurface
+                                : Color.clear
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(
+                        store.selectedConfigId == config.id ? theme.accent.opacity(0.35) : theme.border.opacity(0),
+                        lineWidth: 1
+                    )
             )
             .contentShape(Rectangle())
             .onHover { isHovered in
@@ -198,6 +238,7 @@ struct AIModelConfigListView: View {
             Divider()
                 .background(theme.border)
                 .padding(.leading, 16)
+                .padding(.trailing, 6)
         }
     }
 }

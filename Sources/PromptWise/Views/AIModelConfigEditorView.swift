@@ -13,6 +13,10 @@ struct AIModelConfigEditorView: View {
     @State private var fetchError: String?
     @State private var useCustomModelName = false  // Ollama 是否使用自定义输入
     
+    private var subtleSurface: Color {
+        theme.mode == .dark ? theme.surfaceBg.opacity(0.55) : theme.surfaceBg.opacity(0.75)
+    }
+    
     init(config: AIModelConfig, isNew: Bool) {
         self.isNew = isNew
         _config = State(initialValue: config)
@@ -29,7 +33,9 @@ struct AIModelConfigEditorView: View {
                     Image(systemName: "xmark")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(theme.textSecondary)
-                        .frame(width: 20, height: 20)
+                        .frame(width: 28, height: 28)
+                        .background(subtleSurface)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
                 }
                 .buttonStyle(.plain)
                 .help("关闭")
@@ -39,7 +45,7 @@ struct AIModelConfigEditorView: View {
                 // 标题：新建时显示"新建配置"，编辑时显示配置名称
                 VStack(spacing: 2) {
                     Text(isNew ? "新建配置" : config.name)
-                        .font(.system(size: 14, weight: .medium))
+                        .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(theme.textPrimary)
                     if !isNew {
                         Text("编辑配置")
@@ -52,26 +58,27 @@ struct AIModelConfigEditorView: View {
                 
                 // 占位符保持居中
                 Color.clear
-                    .frame(width: 20, height: 20)
+                    .frame(width: 28, height: 28)
             }
-            .padding(16)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 14)
             
             Divider().background(theme.border)
             
             // 表单
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 20) {
                     // 基本信息
                     formSection("基本信息") {
                         formField("名称") {
                             TextField("配置名称", text: $config.name)
                                 .textFieldStyle(.plain)
                                 .foregroundStyle(theme.textPrimary)
-                                .padding(8)
+                                .padding(10)
                                 .background(theme.surfaceBg)
-                                .clipShape(RoundedRectangle(cornerRadius: 6))
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: 6)
+                                    RoundedRectangle(cornerRadius: 8)
                                         .stroke(theme.border, lineWidth: 1)
                                 )
                         }
@@ -97,11 +104,11 @@ struct AIModelConfigEditorView: View {
                             TextField("https://api.example.com", text: $config.baseURL)
                                 .textFieldStyle(.plain)
                                 .foregroundStyle(theme.textPrimary)
-                                .padding(8)
+                                .padding(10)
                                 .background(theme.surfaceBg)
-                                .clipShape(RoundedRectangle(cornerRadius: 6))
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: 6)
+                                    RoundedRectangle(cornerRadius: 8)
                                         .stroke(theme.border, lineWidth: 1)
                                 )
                         }
@@ -111,11 +118,11 @@ struct AIModelConfigEditorView: View {
                                 SecureField("sk-...", text: $config.apiKey)
                                     .textFieldStyle(.plain)
                                     .foregroundStyle(theme.textPrimary)
-                                    .padding(8)
+                                    .padding(10)
                                     .background(theme.surfaceBg)
-                                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
                                     .overlay(
-                                        RoundedRectangle(cornerRadius: 6)
+                                        RoundedRectangle(cornerRadius: 8)
                                             .stroke(theme.border, lineWidth: 1)
                                     )
                             }
@@ -153,9 +160,9 @@ struct AIModelConfigEditorView: View {
                                                 }
                                                 .padding(8)
                                                 .background(theme.surfaceBg)
-                                                .clipShape(RoundedRectangle(cornerRadius: 6))
+                                                .clipShape(RoundedRectangle(cornerRadius: 8))
                                                 .overlay(
-                                                    RoundedRectangle(cornerRadius: 6)
+                                                    RoundedRectangle(cornerRadius: 8)
                                                         .stroke(theme.border, lineWidth: 1)
                                                 )
                                             }
@@ -165,11 +172,11 @@ struct AIModelConfigEditorView: View {
                                             TextField("llama3", text: $config.modelName)
                                                 .textFieldStyle(.plain)
                                                 .foregroundStyle(theme.textPrimary)
-                                                .padding(8)
+                                                .padding(10)
                                                 .background(theme.surfaceBg)
-                                                .clipShape(RoundedRectangle(cornerRadius: 6))
+                                                .clipShape(RoundedRectangle(cornerRadius: 8))
                                                 .overlay(
-                                                    RoundedRectangle(cornerRadius: 6)
+                                                    RoundedRectangle(cornerRadius: 8)
                                                         .stroke(theme.border, lineWidth: 1)
                                                 )
                                         }
@@ -187,11 +194,11 @@ struct AIModelConfigEditorView: View {
                                             }
                                         }
                                         .buttonStyle(.plain)
-                                        .padding(8)
+                                        .padding(10)
                                         .background(theme.surfaceBg)
-                                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
                                         .overlay(
-                                            RoundedRectangle(cornerRadius: 6)
+                                            RoundedRectangle(cornerRadius: 8)
                                                 .stroke(theme.border, lineWidth: 1)
                                         )
                                         .disabled(isFetchingModels)
@@ -210,11 +217,11 @@ struct AIModelConfigEditorView: View {
                                 TextField("gpt-4o", text: $config.modelName)
                                     .textFieldStyle(.plain)
                                     .foregroundStyle(theme.textPrimary)
-                                    .padding(8)
+                                    .padding(10)
                                     .background(theme.surfaceBg)
-                                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
                                     .overlay(
-                                        RoundedRectangle(cornerRadius: 6)
+                                        RoundedRectangle(cornerRadius: 8)
                                             .stroke(theme.border, lineWidth: 1)
                                     )
                             }
@@ -235,9 +242,9 @@ struct AIModelConfigEditorView: View {
                             .foregroundStyle(theme.textPrimary)
                             .scrollContentBackground(.hidden)
                             .background(theme.surfaceBg)
-                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
                             .overlay(
-                                RoundedRectangle(cornerRadius: 6)
+                                RoundedRectangle(cornerRadius: 8)
                                     .stroke(theme.border, lineWidth: 1)
                             )
                     }
@@ -253,11 +260,11 @@ struct AIModelConfigEditorView: View {
                             TextField("2048", value: $config.maxTokens, format: .number)
                                 .textFieldStyle(.plain)
                                 .foregroundStyle(theme.textPrimary)
-                                .padding(8)
+                                .padding(10)
                                 .background(theme.surfaceBg)
-                                .clipShape(RoundedRectangle(cornerRadius: 6))
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: 6)
+                                    RoundedRectangle(cornerRadius: 8)
                                         .stroke(theme.border, lineWidth: 1)
                                 )
                         }
@@ -291,30 +298,28 @@ struct AIModelConfigEditorView: View {
                         }
                     }
                 }
-                .padding(16)
+                .padding(18)
             }
             
             Divider().background(theme.border)
             
             // 底部按钮
-            HStack {
-                Button("取消") {
-                    dismiss()
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                
+            HStack(spacing: 12) {
                 Spacer()
                 
-                Button(isNew ? "添加" : "保存") {
+                footerButton("取消", primary: false) {
+                    dismiss()
+                }
+                
+                footerButton(isNew ? "添加" : "保存", primary: true) {
                     saveConfig()
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-                .tint(theme.accent)
                 .disabled(config.name.isEmpty || config.modelName.isEmpty)
+                .opacity(config.name.isEmpty || config.modelName.isEmpty ? 0.45 : 1)
             }
-            .padding(16)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 14)
+            .background(subtleSurface.opacity(0.45))
         }
         .frame(width: 420, height: 580)
         .background(theme.panelBg)
@@ -326,6 +331,23 @@ struct AIModelConfigEditorView: View {
         .environment(\.colorScheme, theme.mode == .dark ? .dark : .light)
     }
     
+    private func footerButton(_ title: String, primary: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(primary ? Color.white : theme.textPrimary)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 7)
+                .background(primary ? theme.accent : theme.surfaceBg)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(primary ? Color.clear : theme.border, lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
+    }
+    
     // MARK: - 表单组件
     
     private func formSection<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
@@ -333,7 +355,16 @@ struct AIModelConfigEditorView: View {
             Text(title)
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(theme.textSecondary)
-            content()
+            VStack(alignment: .leading, spacing: 12) {
+                content()
+            }
+            .padding(12)
+            .background(subtleSurface.opacity(0.55))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(theme.border.opacity(0.75), lineWidth: 1)
+            )
         }
     }
     

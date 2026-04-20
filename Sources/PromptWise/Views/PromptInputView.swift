@@ -48,6 +48,12 @@ struct PromptInputView: View {
     @State private var showErrorAlert = false
     @State private var optimizeTask: Task<Void, Never>?
     @State private var isCancelled = false
+    @State private var hoveredClosableVersionId: UUID?
+    
+    private var panelCornerRadius: CGFloat { 14 }
+    private var subtleSurface: Color {
+        theme.mode == .dark ? theme.surfaceBg.opacity(0.55) : theme.surfaceBg.opacity(0.75)
+    }
     
     var body: some View {
         VStack(spacing: 0) {
@@ -76,9 +82,9 @@ struct PromptInputView: View {
         }
         .frame(width: 450, height: 420)
         .background(theme.panelBg)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .clipShape(RoundedRectangle(cornerRadius: panelCornerRadius))
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: panelCornerRadius)
                 .stroke(theme.border, lineWidth: 1)
         )
         .onAppear {
@@ -111,35 +117,45 @@ struct PromptInputView: View {
     
     private var headerSection: some View {
         HStack {
-            Text("提示语输入")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(theme.textPrimary)
+            HStack(spacing: 8) {
+                Image(systemName: "text.bubble")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(theme.accent)
+                Text("提示语输入")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(theme.textPrimary)
+            }
             Spacer()
             Button {
                 showModelConfig = true
             } label: {
                 Image(systemName: "gearshape")
-                    .font(.system(size: 14))
+                    .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(theme.textSecondary)
+                    .frame(width: 28, height: 28)
+                    .background(subtleSurface)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
             }
             .buttonStyle(.plain)
             .help("模型设置")
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 14)
     }
     
-    // MARK: - 状态条
+    // MARK: - 状态条（样式 1: 极简胶囊标签）
     
     private var statusBarSection: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
+            HStack(spacing: 6) {
                 // "当前"按钮
                 versionButton(
                     title: "当前",
                     isSelected: sessionStore.session.isOriginalSelected,
                     isLoading: false,
-                    action: { selectOriginal() }
+                    action: { selectOriginal() },
+                    onClose: nil,
+                    closeId: nil
                 )
                 
                 // 优化版本按钮 - 显示模型配置名称
@@ -148,7 +164,9 @@ struct PromptInputView: View {
                         title: version.modelConfigName,
                         isSelected: sessionStore.session.selectedVersionId == version.id,
                         isLoading: isOptimizing && currentStreamingVersionId == version.id,
-                        action: { selectVersion(version.id) }
+                        action: { selectVersion(version.id) },
+                        onClose: { removeVersion(version.id) },
+                        closeId: version.id
                     )
                 }
                 
@@ -157,54 +175,95 @@ struct PromptInputView: View {
                 // 清除按钮
                 if !sessionStore.session.versions.isEmpty {
                     Button {
-                        // 先停止正在进行的优化
                         if isOptimizing {
                             stopOptimize()
                         }
                         clearVersions()
                     } label: {
                         Text("清除")
-                            .font(.system(size: 11))
+                            .font(.system(size: 10))
                             .foregroundStyle(isOptimizing ? .red : theme.textTertiary)
                     }
                     .buttonStyle(.plain)
                     .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(theme.surfaceBg.opacity(0.5))
-                    .clipShape(Capsule())
+                    .padding(.vertical, 4)
+                    .background(Color.clear)
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
                     .help(isOptimizing ? "停止并清除所有优化版本" : "清除所有优化版本")
                 }
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, 14)
             .padding(.vertical, 10)
         }
+        .background(theme.mode == .dark ? theme.panelBg : subtleSurface.opacity(0.3))
     }
     
-    private func versionButton(title: String, isSelected: Bool, isLoading: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 4) {
-                if isLoading {
-                    ProgressView()
-                        .scaleEffect(0.6)
-                        .frame(width: 12, height: 12)
-                        .tint(isSelected ? .white : theme.textSecondary)
-                }
-                Text(isLoading ? "生成中..." : title)
-                    .font(.system(size: 12, weight: isSelected ? .semibold : .medium))
-                    .foregroundStyle(isSelected ? .white : theme.textSecondary)
+    private func versionButton(
+        title: String,
+        isSelected: Bool,
+        isLoading: Bool,
+        action: @escaping () -> Void,
+        onClose: (() -> Void)?,
+        closeId: UUID?
+    ) -> some View {
+        HStack(spacing: 4) {
+            if isLoading {
+                ProgressView()
+                    .scaleEffect(0.52)
+                    .frame(width: 10, height: 10)
+                    .tint(isSelected ? theme.textPrimary : theme.textSecondary)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(isSelected ? theme.accent : theme.surfaceBg)
-            .clipShape(Capsule())
-            .overlay(
-                Capsule()
-                    .stroke(isSelected ? theme.accent : theme.border, lineWidth: isSelected ? 0 : 1)
-            )
-            .animation(.easeInOut(duration: 0.2), value: isLoading)
+            Text(isLoading ? "生成中..." : title)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(
+                    isSelected
+                    ? (theme.mode == .dark ? Color.white : Color(red: 0.102, green: 0.102, blue: 0.102))
+                    : (theme.mode == .dark
+                        ? Color(red: 0.40, green: 0.40, blue: 0.40)
+                        : Color(red: 0.53, green: 0.53, blue: 0.53))
+                )
         }
-        .buttonStyle(.plain)
-        .disabled(isLoading)
+        .padding(.leading, 10)
+        .padding(.trailing, onClose == nil ? 10 : 22)
+        .padding(.vertical, 5)
+        .background(
+            isSelected
+            ? theme.accent.opacity(theme.mode == .dark ? 0.15 : 0.10)
+            : Color.clear
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+        .overlay(alignment: .topTrailing) {
+            if let onClose, let closeId {
+                Button(action: onClose) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundStyle(theme.mode == .dark
+                            ? Color(red: 0.62, green: 0.62, blue: 0.62)
+                            : Color(red: 0.45, green: 0.45, blue: 0.45))
+                        .frame(width: 12, height: 12)
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 1)
+                .padding(.trailing, 2)
+                .opacity(hoveredClosableVersionId == closeId ? 1 : 0)
+                .allowsHitTesting(hoveredClosableVersionId == closeId)
+            }
+        }
+        .contentShape(RoundedRectangle(cornerRadius: 6))
+        .onHover { isHovered in
+            guard let closeId else { return }
+            if isHovered {
+                hoveredClosableVersionId = closeId
+            } else if hoveredClosableVersionId == closeId {
+                hoveredClosableVersionId = nil
+            }
+        }
+        .onTapGesture {
+            guard !isLoading else { return }
+            action()
+        }
+        .animation(.easeInOut(duration: 0.15), value: isSelected)
+        .animation(.easeInOut(duration: 0.15), value: isLoading)
     }
     
     // MARK: - 编辑区
@@ -216,7 +275,15 @@ struct PromptInputView: View {
             mode: theme.mode
         )
         .frame(minHeight: 180)
-        .padding(12)
+        .padding(10)
+        .background(theme.surfaceBg)
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(theme.border, lineWidth: 1)
+        )
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
         .onChange(of: text) { newValue in
             // 只有在显示原始内容时，才更新原始内容
             if sessionStore.session.isOriginalSelected && currentStreamingVersionId == nil {
@@ -247,9 +314,10 @@ struct PromptInputView: View {
             }
         }
         .font(.system(size: 11))
+        .monospacedDigit()
         .foregroundStyle(theme.textTertiary)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 10)
     }
     
     private var tokenEstimate: Int {
@@ -295,7 +363,7 @@ struct PromptInputView: View {
                         .foregroundStyle(theme.textSecondary)
                 }
                 .padding(.horizontal, 10)
-                .padding(.vertical, 6)
+                .padding(.vertical, 7)
                 .background(theme.surfaceBg)
                 .clipShape(RoundedRectangle(cornerRadius: 6))
                 .overlay(
@@ -325,7 +393,7 @@ struct PromptInputView: View {
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(.white)
                 .padding(.horizontal, 14)
-                .padding(.vertical, 6)
+                .padding(.vertical, 7)
                 .background(
                     isOptimizing
                     ? Color.red.opacity(0.8)
@@ -346,7 +414,7 @@ struct PromptInputView: View {
                     .font(.system(size: 12))
                     .foregroundStyle(theme.textPrimary)
                     .padding(.horizontal, 14)
-                    .padding(.vertical, 6)
+                    .padding(.vertical, 7)
                     .background(theme.surfaceBg)
                     .clipShape(RoundedRectangle(cornerRadius: 6))
                     .overlay(
@@ -357,7 +425,8 @@ struct PromptInputView: View {
             .buttonStyle(.plain)
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.vertical, 14)
+        .background(subtleSurface.opacity(0.45))
     }
     
     // MARK: - 会话管理
@@ -391,6 +460,22 @@ struct PromptInputView: View {
     private func clearVersions() {
         sessionStore.clearVersions()
         text = sessionStore.session.originalContent
+    }
+    
+    private func removeVersion(_ id: UUID) {
+        if isOptimizing && currentStreamingVersionId == id {
+            stopOptimize()
+        }
+        
+        let wasSelected = sessionStore.session.selectedVersionId == id
+        sessionStore.session.versions.removeAll { $0.id == id }
+        
+        if wasSelected {
+            sessionStore.session.selectedVersionId = nil
+            text = sessionStore.session.originalContent
+        }
+        
+        sessionStore.save()
     }
     
     private func stopOptimize() {
