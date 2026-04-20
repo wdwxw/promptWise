@@ -237,7 +237,7 @@ private struct CollectionQuickItemView: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 6)
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: 180, alignment: .leading)
         .background(
             Capsule()
                 .fill(backgroundColor)
@@ -314,29 +314,24 @@ private struct QuickAccessItemView: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            // 序号前缀
-            Text("\(index)")
-                .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                .foregroundStyle(indexColor)
-                .frame(width: 14, alignment: .center)
-
             Text(prompt.title)
                 .font(.system(size: 11))
                 .foregroundStyle(foregroundColor)
                 .lineLimit(1)
-
-            Spacer(minLength: 0)
+                .truncationMode(.tail)
+                .layoutPriority(1)
 
             if isCopied {
                 Text("已复制")
                     .font(.system(size: 9, weight: .medium))
                     .foregroundStyle(.green.opacity(0.8))
+                    .fixedSize()
                     .transition(.scale.combined(with: .opacity))
             }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 6)
-        .frame(maxWidth: 180)
+        .frame(maxWidth: 180, alignment: .leading)
         .background(
             Capsule()
                 .fill(backgroundColor)
