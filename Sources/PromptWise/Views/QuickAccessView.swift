@@ -188,9 +188,16 @@ private struct CollectionQuickItemView: View {
         collection.promptIds.compactMap { id in allPrompts.first { $0.id == id } }
     }
 
+    private var isSolidStyle: Bool { theme.quickAccessButtonStyle == .solid }
+
     private var backgroundColor: Color {
         if isHovered {
             return berryPurple.opacity(0.7)
+        }
+        if isSolidStyle {
+            return isDark
+                ? Color(red: 88/255, green: 28/255, blue: 135/255).opacity(0.7)
+                : berryPurple.opacity(0.15)
         }
         return isDark
             ? Color(red: 88/255, green: 28/255, blue: 135/255).opacity(0.5)
@@ -280,6 +287,8 @@ private struct QuickAccessItemView: View {
 
     private var isDark: Bool { theme.mode == .dark }
 
+    private var isSolidStyle: Bool { theme.quickAccessButtonStyle == .solid }
+
     private var backgroundColor: Color {
         if isHovered {
             return Color(nsColor: NSColor(red: 0.486, green: 0.227, blue: 0.929, alpha: 0.5))
@@ -288,6 +297,11 @@ private struct QuickAccessItemView: View {
             return isDark
                 ? Color.orange.opacity(0.22)
                 : Color.orange.opacity(0.15)
+        }
+        if isSolidStyle {
+            return isDark
+                ? Color(red: 0.18, green: 0.18, blue: 0.18)
+                : Color(red: 0.94, green: 0.94, blue: 0.94)
         }
         return isDark
             ? Color.black.opacity(0.65)

@@ -116,6 +116,21 @@ struct SettingsView: View {
                                 .frame(width: 100)
                                 .controlSize(.small)
                             }
+
+                            HStack(spacing: 6) {
+                                Text("按钮风格")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(.secondary)
+
+                                Picker("", selection: $theme.quickAccessButtonStyle) {
+                                    ForEach(QuickAccessButtonStyle.allCases) { style in
+                                        Text(style.displayName).tag(style)
+                                    }
+                                }
+                                .pickerStyle(.menu)
+                                .frame(width: 80)
+                                .controlSize(.small)
+                            }
                         }
                     }
                 }

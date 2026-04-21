@@ -36,6 +36,20 @@ enum DataAddPosition: String, CaseIterable, Identifiable {
     }
 }
 
+enum QuickAccessButtonStyle: String, CaseIterable, Identifiable {
+    case transparent = "transparent"
+    case solid = "solid"
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .transparent: return "透明"
+        case .solid: return "不透明"
+        }
+    }
+}
+
 final class ThemeManager: ObservableObject {
     static let shared = ThemeManager()
 
@@ -68,6 +82,11 @@ final class ThemeManager: ObservableObject {
                 UserDefaults.standard.removeObject(forKey: "quickAccessCategoryId")
             }
         }
+    }
+
+    /// 快捷图标按钮风格（透明/不透明）
+    @Published var quickAccessButtonStyle: QuickAccessButtonStyle {
+        didSet { UserDefaults.standard.set(quickAccessButtonStyle.rawValue, forKey: "quickAccessButtonStyle") }
     }
 
     /// 数据新增位置（顶部或末尾）
@@ -142,6 +161,8 @@ final class ThemeManager: ObservableObject {
         } else {
             self.quickAccessCategoryId = nil
         }
+        let savedButtonStyle = UserDefaults.standard.string(forKey: "quickAccessButtonStyle") ?? "transparent"
+        self.quickAccessButtonStyle = QuickAccessButtonStyle(rawValue: savedButtonStyle) ?? .transparent
         let savedPosition = UserDefaults.standard.string(forKey: "dataAddPosition") ?? "bottom"
         self.dataAddPosition = DataAddPosition(rawValue: savedPosition) ?? .bottom
 

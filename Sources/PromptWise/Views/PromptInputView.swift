@@ -146,54 +146,57 @@ struct PromptInputView: View {
     // MARK: - 状态条（样式 1: 极简胶囊标签）
     
     private var statusBarSection: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
-                // "当前"按钮
-                versionButton(
-                    title: "当前",
-                    isSelected: sessionStore.session.isOriginalSelected,
-                    isLoading: false,
-                    action: { selectOriginal() },
-                    onClose: nil,
-                    closeId: nil
-                )
-                
-                // 优化版本按钮 - 显示模型配置名称
-                ForEach(sessionStore.session.versions) { version in
+        HStack(spacing: 0) {
+            // 标签滚动区域
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    // "当前"按钮
                     versionButton(
-                        title: version.modelConfigName,
-                        isSelected: sessionStore.session.selectedVersionId == version.id,
-                        isLoading: isOptimizing && currentStreamingVersionId == version.id,
-                        action: { selectVersion(version.id) },
-                        onClose: { removeVersion(version.id) },
-                        closeId: version.id
+                        title: "当前",
+                        isSelected: sessionStore.session.isOriginalSelected,
+                        isLoading: false,
+                        action: { selectOriginal() },
+                        onClose: nil,
+                        closeId: nil
                     )
-                }
-                
-                Spacer(minLength: 0)
-                
-                // 清除按钮
-                if !sessionStore.session.versions.isEmpty {
-                    Button {
-                        if isOptimizing {
-                            stopOptimize()
-                        }
-                        clearVersions()
-                    } label: {
-                        Text("清除")
-                            .font(.system(size: 10))
-                            .foregroundStyle(isOptimizing ? .red : theme.textTertiary)
+                    
+                    // 优化版本按钮 - 显示模型配置名称
+                    ForEach(sessionStore.session.versions) { version in
+                        versionButton(
+                            title: version.modelConfigName,
+                            isSelected: sessionStore.session.selectedVersionId == version.id,
+                            isLoading: isOptimizing && currentStreamingVersionId == version.id,
+                            action: { selectVersion(version.id) },
+                            onClose: { removeVersion(version.id) },
+                            closeId: version.id
+                        )
                     }
-                    .buttonStyle(.plain)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(Color.clear)
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
-                    .help(isOptimizing ? "停止并清除所有优化版本" : "清除所有优化版本")
                 }
+                .padding(.leading, 14)
+                .padding(.trailing, 6)
+                .padding(.vertical, 10)
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
+            
+            // 清除按钮 - 固定在右侧
+            if !sessionStore.session.versions.isEmpty {
+                Button {
+                    if isOptimizing {
+                        stopOptimize()
+                    }
+                    clearVersions()
+                } label: {
+                    Text("清除")
+                        .font(.system(size: 10))
+                        .foregroundStyle(isOptimizing ? .red : theme.textTertiary)
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .background(Color.clear)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .help(isOptimizing ? "停止并清除所有优化版本" : "清除所有优化版本")
+                .padding(.trailing, 14)
+            }
         }
         .background(theme.mode == .dark ? theme.panelBg : subtleSurface.opacity(0.3))
     }
@@ -275,11 +278,10 @@ struct PromptInputView: View {
             mode: theme.mode
         )
         .frame(minHeight: 180)
-        .padding(10)
         .background(theme.surfaceBg)
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(
-            RoundedRectangle(cornerRadius: 10)
+            RoundedRectangle(cornerRadius: 12)
                 .stroke(theme.border, lineWidth: 1)
         )
         .padding(.horizontal, 14)
@@ -440,19 +442,11 @@ struct PromptInputView: View {
     }
     
     private func selectOriginal() {
-        // 切换版本时停止正在进行的优化
-        if isOptimizing {
-            stopOptimize()
-        }
         sessionStore.selectVersion(nil)
         text = sessionStore.session.originalContent
     }
     
     private func selectVersion(_ id: UUID) {
-        // 如果正在优化且切换到非当前流式版本，先停止
-        if isOptimizing && id != currentStreamingVersionId {
-            stopOptimize()
-        }
         sessionStore.selectVersion(id)
         text = sessionStore.session.currentContent
     }
@@ -538,8 +532,12 @@ struct PromptInputView: View {
                         return
                     }
                     fullContent += chunk
-                    text = fullContent
+                    // 始终更新版本内容（后台写入）
                     sessionStore.updateVersionContent(version.id, content: fullContent)
+                    // 只有当前选中的是正在生成的版本时，才更新显示
+                    if sessionStore.session.selectedVersionId == version.id {
+                        text = fullContent
+                    }
                 }
                 
                 // 检查是否被取消
@@ -561,8 +559,12 @@ struct PromptInputView: View {
                     return
                 }
                 
-                text = result
+                // 始终更新版本内容（后台写入）
                 sessionStore.updateVersionContent(version.id, content: result)
+                // 只有当前选中的是正在生成的版本时，才更新显示
+                if sessionStore.session.selectedVersionId == version.id {
+                    text = result
+                }
                 sessionStore.save()
                 AILogger.shared.log("非流式输出完成，已保存")
             }
@@ -657,6 +659,17 @@ struct PromptInputTextEditor: NSViewRepresentable {
     @Binding var selectedRange: NSRange
     let mode: ThemeMode
     
+    private let typographyFontSize: CGFloat = 13
+    private let typographyLineHeight: CGFloat = 23.4
+    private let typographyKern: CGFloat = 0.39
+    
+    private func paragraphStyle() -> NSMutableParagraphStyle {
+        let style = NSMutableParagraphStyle()
+        style.minimumLineHeight = typographyLineHeight
+        style.maximumLineHeight = typographyLineHeight
+        return style
+    }
+    
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSScrollView()
         scrollView.hasVerticalScroller = true
@@ -669,6 +682,7 @@ struct PromptInputTextEditor: NSViewRepresentable {
 
         let textContainer = NSTextContainer(containerSize: NSSize(width: contentSize.width, height: .greatestFiniteMagnitude))
         textContainer.widthTracksTextView = true
+        textContainer.lineFragmentPadding = 0
         layoutManager.addTextContainer(textContainer)
 
         let textView = PromptInputTextView(frame: NSRect(origin: .zero, size: contentSize), textContainer: textContainer)
@@ -677,15 +691,24 @@ struct PromptInputTextEditor: NSViewRepresentable {
         textView.isVerticallyResizable = true
         textView.isHorizontallyResizable = false
         textView.autoresizingMask = [.width]
-        textView.textContainerInset = NSSize(width: 0, height: 0)
+        textView.textContainerInset = NSSize(width: 16, height: 16)
         scrollView.documentView = textView
 
         textView.delegate = context.coordinator
         textView.isRichText = false
-        textView.font = NSFont.systemFont(ofSize: 13)
+        textView.font = NSFont.systemFont(ofSize: typographyFontSize)
         textView.isAutomaticQuoteSubstitutionEnabled = false
         textView.isAutomaticDashSubstitutionEnabled = false
         textView.allowsUndo = true
+        
+        // 设置行间距和字间距
+        let paragraphStyle = paragraphStyle()
+        textView.defaultParagraphStyle = paragraphStyle
+        textView.typingAttributes = [
+            .font: NSFont.systemFont(ofSize: typographyFontSize),
+            .paragraphStyle: paragraphStyle,
+            .kern: typographyKern
+        ]
 
         // 注册拖拽类型
         textView.registerForDraggedTypes([.string])
@@ -704,6 +727,7 @@ struct PromptInputTextEditor: NSViewRepresentable {
         if textView.string != text {
             let currentSelection = textView.selectedRange()
             textView.string = text
+            applyTextStyle(to: textView)
             let newLocation = min(currentSelection.location, text.count)
             textView.setSelectedRange(NSRange(location: newLocation, length: 0))
         }
@@ -723,6 +747,17 @@ struct PromptInputTextEditor: NSViewRepresentable {
         textView.backgroundColor = surface
         textView.insertionPointColor = accent
         textView.drawsBackground = true
+        
+        // 更新 typingAttributes 以保持颜色和排版一致
+        let paragraphStyle = paragraphStyle()
+        textView.typingAttributes = [
+            .font: NSFont.systemFont(ofSize: typographyFontSize),
+            .foregroundColor: textPrimary,
+            .paragraphStyle: paragraphStyle,
+            .kern: typographyKern
+        ]
+        textView.defaultParagraphStyle = paragraphStyle
+        applyTextStyle(to: textView)
 
         // 使用 overlay 滚动条，避免无滚动内容时占用右侧槽位
         scrollView.scrollerStyle = .overlay
@@ -735,6 +770,19 @@ struct PromptInputTextEditor: NSViewRepresentable {
         scrollView.borderType = .noBorder
         scrollView.contentView.drawsBackground = true
         scrollView.contentView.backgroundColor = surface
+    }
+    
+    private func applyTextStyle(to textView: NSTextView) {
+        guard let textStorage = textView.textStorage else { return }
+        let range = NSRange(location: 0, length: textStorage.length)
+        guard range.length > 0 else { return }
+        let color = textView.textColor ?? NSColor.labelColor
+        textStorage.addAttributes([
+            .font: NSFont.systemFont(ofSize: typographyFontSize),
+            .foregroundColor: color,
+            .paragraphStyle: paragraphStyle(),
+            .kern: typographyKern
+        ], range: range)
     }
     
     func makeCoordinator() -> Coordinator {
