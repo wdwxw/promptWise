@@ -4,6 +4,7 @@
 #   ./build_dmg.sh              # 使用默认版本 1.0.0
 #   ./build_dmg.sh 1.2.0        # 指定版本号
 #   ./build_dmg.sh 1.2.0 --skip-build   # 仅打包（跳过 swift build）
+#   ./build_dmg.sh 1.2.0 --no-sign      # 不签名（不推荐，会导致权限识别不稳定）
 
 set -e
 
@@ -25,8 +26,10 @@ log_error() { echo -e "${RED}✘ $1${RESET}" >&2; }
 APP_NAME="PromptWise"
 VERSION="${1:-1.0.0}"
 SKIP_BUILD=false
+NO_SIGN=false
 for arg in "$@"; do
     [[ "$arg" == "--skip-build" ]] && SKIP_BUILD=true
+    [[ "$arg" == "--no-sign" ]] && NO_SIGN=true
 done
 
 BUILD_DIR=".build"
@@ -34,6 +37,9 @@ APP_BUNDLE="${APP_NAME}.app"
 DMG_NAME="${APP_NAME}-${VERSION}"
 VOLUME_NAME="${APP_NAME}"
 ICON_FILE="AppIcon.icns"   # 如果存在 AppIcon.icns 则自动嵌入
+DEFAULT_SIGN_IDENTITY="PromptWise Local Code Signing"
+DEFAULT_SIGN_KEYCHAIN="$HOME/Library/Keychains/promptwise-signing.keychain-db"
+DEFAULT_SIGN_KEYCHAIN_PASSWORD="promptwise-keychain-pass"
 
 # ─── 环境检查 ─────────────────────────────────────────────────────────
 echo ""
@@ -118,6 +124,30 @@ printf '<?xml version="1.0" encoding="UTF-8"?>
     > "${APP_BUNDLE}/Contents/Info.plist"
 
 log_ok "App Bundle 创建完成：${APP_BUNDLE}"
+
+# ─── 代码签名（默认启用，避免辅助功能权限反复重授权） ───────────────
+if [[ "$NO_SIGN" == true ]]; then
+    log_warn "已跳过签名（--no-sign）。该包可能导致重装后需要重新授权辅助功能"
+else
+    SIGN_IDENTITY="${SIGN_IDENTITY:-$DEFAULT_SIGN_IDENTITY}"
+    SIGN_KEYCHAIN="${SIGN_KEYCHAIN:-$DEFAULT_SIGN_KEYCHAIN}"
+    SIGN_KEYCHAIN_PASSWORD="${SIGN_KEYCHAIN_PASSWORD:-$DEFAULT_SIGN_KEYCHAIN_PASSWORD}"
+    SIGN_HASH="$(security find-identity -p codesigning "$SIGN_KEYCHAIN" | awk -v id="$SIGN_IDENTITY" '$0 ~ "\"" id "\"" {print $2; exit}')"
+    if [[ -z "$SIGN_HASH" ]]; then
+        log_error "未找到签名身份：${SIGN_IDENTITY}"
+        log_error "请先运行 ./create_local_codesign_cert.sh（无需开发者账号）"
+        exit 1
+    fi
+
+    log_step "使用签名身份进行签名：${SIGN_IDENTITY}"
+    ORIGINAL_KEYCHAINS=$(security list-keychains -d user | tr -d '"')
+    security list-keychains -d user -s "$SIGN_KEYCHAIN" "$HOME/Library/Keychains/login.keychain-db" >/dev/null
+    security unlock-keychain -p "$SIGN_KEYCHAIN_PASSWORD" "$SIGN_KEYCHAIN" >/dev/null || true
+    codesign --force --deep --timestamp=none --sign "$SIGN_HASH" "${APP_BUNDLE}"
+    security list-keychains -d user -s $ORIGINAL_KEYCHAINS >/dev/null 2>&1 || true
+    codesign --verify --deep --strict --verbose=2 "${APP_BUNDLE}"
+    log_ok "签名完成并验证通过"
+fi
 
 # ─── 创建 DMG ─────────────────────────────────────────────────────────
 log_step "打包 DMG..."

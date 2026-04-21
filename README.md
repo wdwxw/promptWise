@@ -57,6 +57,62 @@ open PromptWise.app
 cp -r PromptWise.app /Applications/
 ```
 
+## 签名与分发（无需开发者账号）
+
+为减少“重装后辅助功能重复授权”问题，项目已内置本地固定签名流程（非 ad hoc）。
+
+### 1) 首次初始化本地签名证书（仅一次）
+
+```bash
+./create_local_codesign_cert.sh
+```
+
+该脚本会：
+- 创建/使用专用 keychain：`~/Library/Keychains/promptwise-signing.keychain-db`
+- 导入 `PromptWise Local Code Signing` 证书与私钥
+
+### 2) 构建并签名 `.app`
+
+```bash
+./build.sh
+```
+
+可选参数：
+- `./build.sh --skip-build`：跳过 `swift build`
+- `./build.sh --no-sign`：跳过签名（不推荐，可能导致权限识别不稳定）
+
+### 3) 构建并签名 `.dmg`
+
+```bash
+./build_dmg.sh
+./build_dmg.sh 1.2.0
+```
+
+可选参数：
+- `./build_dmg.sh 1.2.0 --skip-build`
+- `./build_dmg.sh 1.2.0 --no-sign`（不推荐）
+
+### 4) 验证签名结果
+
+```bash
+# 默认检查当前目录 PromptWise.app
+./verify_sign.sh
+
+# 检查已安装 app
+./verify_sign.sh /Applications/PromptWise.app
+
+# 检查 dmg（会自动挂载并检查其中 app）
+./verify_sign.sh ./PromptWise-1.0.0.dmg
+```
+
+检查重点：
+- `codesign -dv` 输出中 `Signature` 不应为 `adhoc`
+- `codesign --verify --deep --strict` 应通过
+
+说明：
+- 本地自签名场景下出现 `NOT_TRUSTED` 属于预期现象，不影响本地固定身份签名流程。
+- 对外公开分发若需更高稳定性与系统信任，建议使用 Developer ID + notarization。
+
 ## 数据存储
 
 提示语数据以 JSON 格式存储在：
