@@ -1,5 +1,7 @@
 ## 永远
 - 使用中文回复
 
-## 项目结构
-查看 ` TECHNICAL_DOC.md`
+
+## 工作流程
+- 总是先从 `TECHNICAL_DOC.md` 获取信息
+
